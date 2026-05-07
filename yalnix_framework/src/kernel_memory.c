@@ -1,6 +1,6 @@
 
 #include "kernel_memory.h"
-#include "PCB.h"
+#include "pcb.h"
 #include "frame_tracking.h"
 #include "hardware.h"
 #include "ykernel.h"
@@ -8,8 +8,8 @@
 
 static bool vm_enabled = false;
 
-pte_t *region0_pt;
-pte_t *region1_pt;
+static pte_t *region0_pt;
+static pte_t *region1_pt;
 
 static int current_brk_page;
 
@@ -26,56 +26,77 @@ void enable_vm() {
   vm_enabled = true;
 }
 
+void init_brk() {
+  current_brk_page = _orig_kernel_brk_page;
+}
+
+
+pte_t* get_region1_pt(void) {
+  return region1_pt;
+}
+
+
 bool setup_region0_pt(void) {
   region0_pt = calloc(REGION0_VPNS, sizeof(pte_t));
+  
+  TracePrintf(0, "Starting region0 pt initialization\n");
 
   if (region0_pt == NULL)
     return false;
 
   for (int vpn = _first_kernel_text_page; vpn < _first_kernel_data_page;
        vpn++) {
-
+    TracePrintf(0, "Acquiring vpn number 0x%x for kernel text\n", vpn);
     if (!acquire_frame(vpn))
       return false;
     create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_EXEC);
   }
 
   for (int vpn = _first_kernel_data_page; vpn < current_brk_page; vpn++) {
+    TracePrintf(0, "Acquiring vpn number 0x%x for kernel data\n", vpn);
 
     if (!acquire_frame(vpn))
       return false;
     create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_WRITE);
   }
 
-  for (int vpn = KERNEL_STACK_BASE; vpn < KERNEL_STACK_LIMIT; vpn++) {
+  for (int vpn = K_STACK_BASE_VPN; vpn < K_STACK_LIMIT_VPN; vpn++) {
+    TracePrintf(0, "Acquiring vpn number 0x%x for kernel stack\n", vpn);
+
     if (!acquire_frame(vpn))
       return false;
     create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_WRITE);
   }
 
-  WriteRegister(REG_PTBR0, (unsigned int)(long)region0_pt);
-  WriteRegister(REG_PTLR0, (unsigned int)(long)(region0_pt + REGION0_VPNS));
+  TracePrintf(0, "Writing region 0 page table to register\n");
+
+  WriteRegister(REG_PTBR0, (unsigned int)(long) region0_pt);
+  WriteRegister(REG_PTLR0, REGION0_VPNS);
 
   return true;
 }
 
 bool setup_region1_pt(void) {
   region1_pt = calloc(REGION1_VPNS, sizeof(pte_t));
+  TracePrintf(0, "Starting region 1 pt initialization\n");
 
   if (region1_pt == NULL) {
     return false;
   }
 
-  WriteRegister(REG_PTBR1, (unsigned int)(long)region1_pt);
-  WriteRegister(REG_PTLR1, (unsigned int)(long)(region1_pt + REGION1_VPNS));
+  TracePrintf(0, "Writing region1 page table to register\n");
 
-  return alloc_page(DOWN_TO_PAGE(VMEM_1_LIMIT), PROT_READ | PROT_WRITE);
+  WriteRegister(REG_PTBR1, (unsigned int)(long)region1_pt);
+  WriteRegister(REG_PTLR1, REGION1_VPNS);
+
+  return alloc_page(DOWN_TO_PAGE(VMEM_1_LIMIT - 1) >> PAGESHIFT, PROT_READ | PROT_WRITE);
 }
 
 int SetKernelBrk(void *addr) {
   int heap_page = UP_TO_PAGE(addr) >> PAGESHIFT;
   int stack_page = DOWN_TO_PAGE(KERNEL_STACK_BASE) >> PAGESHIFT;
-
+  
+  TracePrintf(0, "Setting Brk with,\n heap_page=%d\n stack_page=%d\n original_brk=%d\n", heap_page, stack_page, _orig_kernel_brk_page);
   if (heap_page < _orig_kernel_brk_page || heap_page >= stack_page - 1)
     return ERROR;
 
@@ -100,7 +121,7 @@ int SetKernelBrk(void *addr) {
   return 0;
 }
 
-void undo_allocation(int first_vpn, int last_vpn) {
+static void undo_allocation(int first_vpn, int last_vpn) {
   for (int vpn = first_vpn; vpn < last_vpn; vpn++)
     dealloc_page(vpn);
 }
@@ -154,7 +175,7 @@ KernelContext *KCSwitch(KernelContext *kc_in, void *curr_pcb_p,
   return kc_in;
 }
 
-bool alloc_page(int vpn, int prot) {
+static bool alloc_page(int vpn, int prot) {
   int pfn = find_frame();
 
   if (pfn == -1)

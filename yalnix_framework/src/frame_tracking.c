@@ -18,16 +18,20 @@ static int next_free;
 static int NUM_FRAMES;
 
 bool initialize_frame_tracking(int pmem_size) {
+  
+  TracePrintf(0, "Starting frame tracking initialization\n");
   int pmem_frame_limit = DOWN_TO_PAGE(pmem_size) >> PAGESHIFT;
   NUM_FRAMES = pmem_frame_limit - PMEM_BASE_FRAME;
   int bitset_size = UP_TO_BYTE(NUM_FRAMES) >> BYTE_SHIFT;
   frame_bitset = calloc(bitset_size, sizeof(byte_t));
 
+  next_free = 0;
+
+  TracePrintf(0, "Frame bitset location: %p\n", frame_bitset);
+
   if (frame_bitset != NULL) {
     return true;
   }
-
-  next_free = 0;
 
   return false;
 }
@@ -59,6 +63,8 @@ static void set_frame(int frame_num) {
   byte_t mask = 1 << bit_offset;
 
   frame_bitset[byte_num] |= mask;
+
+  TracePrintf(0, "Frame 0x%x is now allocated\n", frame_num);
 }
 
 static void clear_frame(int frame_num) {
@@ -67,6 +73,9 @@ static void clear_frame(int frame_num) {
   byte_t mask = ~(1 << bit_offset);
 
   frame_bitset[byte_num] &= mask;
+
+  TracePrintf(0, "Frame 0x%3x is now deallocated\n", frame_num);
+
 }
 
 int find_frame(void) {
@@ -82,7 +91,7 @@ int find_frame(void) {
   return add_base(next_free++);
 }
 
-bool aqcuire_frame(int pfn) {
+bool acquire_frame(int pfn) {
   pfn = subtract_base(pfn);
 
   if (!check_if_free(pfn))

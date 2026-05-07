@@ -25,6 +25,8 @@ void enque_pcb(enum queue_type type, pcb_t *pcb) {
 
   pcb->next = NULL;
   queues[type].size++;
+
+  TracePrintf(0, "Enqued pcb with pid %d\nSize is now %d\nFirst in line is %d\n", pcb->pid, queues[type].size, queues[type].first->pid);
 }
 
 pcb_t *deque_pcb(enum queue_type type) {
@@ -44,7 +46,7 @@ pcb_t *deque_pcb(enum queue_type type) {
   return popped;
 }
 
-pcb_t *create_init_pcb(int num_ks_pages, int num_region1_pages,
+pcb_t *create_init_pcb(int num_ks_pages, pte_t* region1_pt,
                        UserContext *uc) {
   pcb_t *pcb = calloc(1, sizeof(pcb_t));
 
@@ -55,7 +57,7 @@ pcb_t *create_init_pcb(int num_ks_pages, int num_region1_pages,
   if (pcb->ks_pt == NULL)
     return NULL;
 
-  pcb->region1_pt = calloc(1, num_region1_pages * sizeof(pte_t));
+  pcb->region1_pt = region1_pt;
   if (pcb->region1_pt == NULL)
     return NULL;
 
@@ -70,6 +72,6 @@ pcb_t *create_init_pcb(int num_ks_pages, int num_region1_pages,
 void set_up_uc(UserContext *uc, void (*idle_func)(void), int sp) {
 
   memset(uc, 0x00, sizeof(UserContext));
-  uc->pc = idle_func;
+  uc->pc = (void*) idle_func;
   uc->sp = (void *)(long)sp;
 }
