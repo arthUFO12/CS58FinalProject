@@ -10,36 +10,9 @@ int original_kernel_brk_page;
 int current_kernel_brk_page;
 bool vm_enabled;
 
+// Helper functions
 
-/* SETKERNELBRK
- *
- */
-SetKernelBrk(void* addr):
-  int page = UP_TO_PAGE(addr) >> PAGE_SHIFT
-  int stack_page = KERNEL_STACK_BASE >> PAGE_SHIFT
-  if page < original_kernel_brk_page or page + 1 >= stack_page:
-    return ERROR
-
-  if not vm_enabled:
-    current_kernel_brk_page = page
-    return 0
-  
-  if page > current_kernel_brk_page:
-    for page_num in current_kernel_brk_page...page - 1:
-      bool success = AllocPage(page_num)
-      if not success:
-        for vpn in current_kernel_brk_page...page_num:
-          DeallocPage(vpn)
-        return ERROR
-
-  else if page < current_kernel_brk_page:
-    for page_num in page...current_kernel_brk_page - 1:
-      DeallocPage(page_num)
-  
-  current_kernel_brk_page = page
-  return 0
-
-AllocPage(int page_num):
+AllocPage(int page_num):// Used to allocate a frame in virtual memory
   frame_num = FindOpenFrame();
   if not frame_num: return false
 
@@ -48,13 +21,49 @@ AllocPage(int page_num):
 
   return true
 
-DeallocPage(int page_num):
+
+DeallocPage(int page_num): // used to deallocate a page in virtual memory
   
   frame_num = DestroyPTE(page_num) // just marks as invalid and returns frame number
   MarkAsUnused(frame_num)
 
-UnmapPageNoFree(int page_num):
-  return DestroyPTE(page_num) // returns frame num and marks page invalid
+UnmapPageNoFree(int page_num): // Used to unmap a page from virtual memory without 
+                               // returning the physical frame to the operating system
+  return DestroyPTE(page_num)
+
+/* SETKERNELBRK
+ *
+ */
+SetKernelBrk(void* addr):
+  int page = UP_TO_PAGE(addr) >> PAGE_SHIFT
+  int stack_page = KERNEL_STACK_BASE >> PAGE_SHIFT
+
+  // make sure heap isn't growing within one page of heap
+  if page < original_kernel_brk_page or page + 1 >= stack_page:
+    return ERROR
+
+  // if vm isn't enabled, just keep track of the top of the heap
+  if not vm_enabled:
+    current_kernel_brk_page = page
+    return 0
+  
+  // If the page is higher than the current brk page then allocate
+  if page > current_kernel_brk_page:
+    for page_num in current_kernel_brk_page...page - 1:
+      bool success = AllocPage(page_num)
+      if not success:
+        for vpn in current_kernel_brk_page...page_num:
+          DeallocPage(vpn)
+        return ERROR
+  
+  // otherwise deallocate
+  else if page < current_kernel_brk_page:
+    for page_num in page...current_kernel_brk_page - 1:
+      DeallocPage(page_num)
+  
+  current_kernel_brk_page = page
+  return 0
+
 
 /* KCCOPY
  *
@@ -62,48 +71,56 @@ UnmapPageNoFree(int page_num):
  */
 
 KernelContext *KCCopy(KernelContext* kc_in, void* new_pcb_p, void* not_used):
+  
   int num_kstack_pages = UP_TO_PAGE(KERNEL_STACK_SIZE) >> PAGE_SHIFT
   int true_kernel_brk_page = current_kernel_brk_page;
+
+  // Expand heap so we can copy stack into frames
   bool success = SetKernelBrk((void*) ((current_kernel_brk_page + num_kstack_pages) << PAGE_SHIFT))
   if not success: return NULL
   
+  // copy stack into the space we allocate
   memcpy((void*) (true_kernel_brk_page << PAGE_SHIFT), (void*) KERNEL_STACK_BASE, KERNEL_STACK_SIZE)
 
+  // access the new process's page table
   pte_t* region0_pt = new_pcb_p->region0_pt;
 
+  // for all virtual page numbers that we allocated...
   for vpn in true_kernel_brk_page...true_kernel_brk_page + num_kstack_pages - 1:
-    frame_num = UnmapPageNoFree(vpn)
-    int shift = vpn - current_kernel_brk_page
+    frame_num = UnmapPageNoFree(vpn) // unmap it from current process memory but, keep the frame
+    int shift = vpn - true_kernel_brk_page // shift from kernel stack base
 
-    int new_proc_vpn = (KERNEL_STACK_BASE >> PAGE_SHIFT) + shift
-    region0_pt[new_proc_vpn].pfn = frame_num
-    region0_pt[new_proc_vpn].valid = 1;
+    int new_proc_vpn = (KERNEL_STACK_BASE >> PAGE_SHIFT) + shift // get the vpn in the new process
+
+    region0_pt[new_proc_vpn].pfn = frame_num // change the page table entry to the corresponding frame number
+    region0_pt[new_proc_vpn].valid = 1; // valid and correfct protections
     region0_pt[new_proc_vpn].prot = PROT_READ | PROT_WRITE
 
   
-  current_kernel_brk_page = true_kernel_brk_page;
+  current_kernel_brk_page = true_kernel_brk_page; // restore the kernel_brk page
 
 
-  memcpy(&(new_pcb_p->kc), kc_in, sizeof(KernelContext))
+  memcpy(&(new_pcb_p->kc), kc_in, sizeof(KernelContext)) // copy the current kernel context to the new pcb
 
   return kc_in;
 
 
+/* KCSwitch
+ *
+ */
 KernelContext *KCSwitch(KernelContext *kc_in, void* curr_pcb_p, void* next_pcb_p):
   pcb_t *curr = curr_p;
   pcb_t *next = next_p;
 
-  // Save outgoing process's kernel context.
-  memcpy(&curr->kc, kc_in, sizeof(KernelContext));
+  memcpy(&curr->kc, kc_in, sizeof(KernelContext)); // save the kernel context to current pcb
 
-  // Switch address spaces.
-  WriteRegister(REG_PTBR0, (unsigned int) next->region0_pt);
+  WriteRegister(REG_PTBR0, (unsigned int) next->region0_pt); // change page table registers
   WriteRegister(REG_PTLR0, NUM_REGION0_PAGES);
 
   WriteRegister(REG_PTBR1, (unsigned int) next->region1_pt);
   WriteRegister(REG_PTLR1, NUM_REGION1_PAGES);
 
-  WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL);
+  WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_ALL); // flush old TLB caches
 
   // Restore incoming process's kernel context.
   return &next->kc;
