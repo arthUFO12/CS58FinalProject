@@ -28,5 +28,6 @@ void enque_pcb(enum queue_type q, pcb_t *pcb);
 
 void set_up_uc(UserContext *uc, void (*idle_func)(void), int sp);
 
-pcb_t *create_idle_pcb(int num_ks_pages, pte_t* region1_pt,
-                       UserContext *uc);
+pcb_t *create_idle_pcb(int num_ks_pages, pte_t *region1_pt, UserContext *uc);
+
+pcb_t *create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext *uc);
