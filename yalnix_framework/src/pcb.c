@@ -46,7 +46,7 @@ pcb_t *deque_pcb(enum queue_type type) {
   return popped;
 }
 
-pcb_t *create_init_pcb(int num_ks_pages, pte_t* region1_pt,
+pcb_t *create_idle_pcb(int num_ks_pages, pte_t* region1_pt,
                        UserContext *uc) {
   pcb_t *pcb = calloc(1, sizeof(pcb_t));
 
@@ -69,6 +69,29 @@ pcb_t *create_init_pcb(int num_ks_pages, pte_t* region1_pt,
   return pcb;
 }
 
+pcb_t* create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext* uc) {
+  pcb_t* pcb = calloc(1, sizeof(pcb_t));
+
+  if (pcb == NULL) {
+    return NULL;
+  }
+
+  pcb->ks_pt = calloc(1, num_ks_pages * sizeof(pte_t));
+  if (pcb->ks_pt == NULL) {
+    return NULL;
+  }
+
+  pcb->region1_pt = calloc(1, num_region1_pte * sizeof(pte_t));
+  if (pcb->region1_pt == NULL)
+    return NULL;
+
+  pcb->pid = helper_new_pid(pcb->region1_pt);
+  pcb->state = READY;
+
+  memcpy(&(pcb->uc), uc, sizeof(UserContext));
+
+  return pcb;
+}
 void set_up_uc(UserContext *uc, void (*idle_func)(void), int sp) {
 
   memset(uc, 0x00, sizeof(UserContext));
