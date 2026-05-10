@@ -1,11 +1,23 @@
-
+#pragma once
 #include "hardware.h"
 
 typedef int pid_t;
 
-enum process_state { RUNNING, READY, BLOCKED };
+enum process_state {
+  RUNNING,
+  READY,
+  WAITING
+};
 
 typedef struct pcb pcb_t;
+typedef struct {
+  pte_t* region1_pt;
+  int curr_brk_page;
+  int orig_brk_page;
+  int txt_start_page;
+  int data_start_page;
+} mem_ctx_t;
+
 
 struct pcb {
   KernelContext kc;
@@ -13,21 +25,14 @@ struct pcb {
   pid_t pid;
   enum process_state state;
 
+  int wake_up;
+  int brk_page;
   pcb_t *next;
   pte_t *ks_pt;
-  pte_t *region1_pt;
+  mem_ctx_t mem_ctx;
+
 };
 
-enum queue_type { MAIN_QUEUE, BLOCKING_QUEUE };
 
-void init_pcb_queue();
-
-pcb_t *deque_pcb(enum queue_type q);
-
-void enque_pcb(enum queue_type q, pcb_t *pcb);
-
-void set_up_uc(UserContext *uc, void (*idle_func)(void), int sp);
-
-pcb_t *create_idle_pcb(int num_ks_pages, pte_t *region1_pt, UserContext *uc);
 
 pcb_t *create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext *uc);

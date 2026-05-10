@@ -1,6 +1,5 @@
 
 #include "frame_tracking.h"
-#include "hardware.h"
 #include "ylib.h"
 
 #define BYTE_SIZE 8
@@ -111,7 +110,19 @@ bool free_frame(int frame_num) {
     return false;
 
   clear_frame(frame_num);
-  next_free = frame_num;
+  next_free = (frame_num < next_free) ? frame_num : next_free;
 
   return true;
+}
+
+
+int destroy_pte(pte_t *base, int vpn) {
+  base[vpn].valid = 0;
+  return base[vpn].pfn;
+}
+
+void create_pte(pte_t *base, int vpn, int pfn, int prot) {
+  base[vpn].valid = 1;
+  base[vpn].pfn = pfn;
+  base[vpn].prot = prot;
 }
