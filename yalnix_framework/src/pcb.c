@@ -3,11 +3,8 @@
 #include "ykernel.h"
 #include "ylib.h"
 
-
-
-
-pcb_t* create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext* uc) {
-  pcb_t* pcb = calloc(1, sizeof(pcb_t));
+pcb_t *create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext *uc) {
+  pcb_t *pcb = calloc(1, sizeof(pcb_t));
 
   if (pcb == NULL) {
     return NULL;
@@ -30,10 +27,9 @@ pcb_t* create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext* uc) {
   return pcb;
 }
 
-void clean_up_pcb(pcb_t* pcb) {
+void clean_up_pcb(pcb_t *pcb) {
   helper_retire_pid(pcb->pid);
   free(pcb->ks_pt);
   free(pcb->mem_ctx.region1_pt);
   free(pcb);
-  
 }

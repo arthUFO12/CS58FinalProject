@@ -1,25 +1,37 @@
-
+/**
+ * @file frame_tracking.c
+ * @brief Creates bitmap and defines helpers to track frame status
+ */
 #include "frame_tracking.h"
 #include "ylib.h"
 
 #define BYTE_SIZE 8
 #define BIT_OFFSET (BYTE_SIZE - 1)
-#define BYTE_MASK (~BYTE_SIZE)
+#define BYTE_MASK (~BIT_OFFSET)
 #define BYTE_SHIFT 3
 #define UP_TO_BYTE(n) (((long)(n) + BIT_OFFSET) & BYTE_MASK)
 #define FULL_BYTE 0xffu
-
 #define PMEM_BASE_FRAME (DOWN_TO_PAGE(PMEM_BASE) >> PAGESHIFT)
 
 typedef unsigned char byte_t;
-static byte_t *frame_bitset;
 static int next_free;
 static int NUM_FRAMES;
 
+/** Bitmap tracking frame status */
+static byte_t *frame_bitset;
+
+/**
+ * @brief Create bitmap to track frame status
+ *
+ * @param pmem_size Physical memory size
+ * @return status
+ */
 bool initialize_frame_tracking(int pmem_size) {
-  
+
   TracePrintf(0, "Starting frame tracking initialization\n");
-  int pmem_frame_limit = DOWN_TO_PAGE(pmem_size) >> PAGESHIFT;
+
+  // Create bitmap
+  int pmem_frame_limit = DOWN_TO_PAGE(pmem_size) >> PAGESHIFT; // get total number of frames
   NUM_FRAMES = pmem_frame_limit - PMEM_BASE_FRAME;
   int bitset_size = UP_TO_BYTE(NUM_FRAMES) >> BYTE_SHIFT;
   frame_bitset = calloc(bitset_size, sizeof(byte_t));
@@ -35,6 +47,7 @@ bool initialize_frame_tracking(int pmem_size) {
   return false;
 }
 
+/* Helpers */
 static int add_base(int frame_num) { return frame_num + PMEM_BASE_FRAME; }
 
 static int subtract_base(int frame_num) { return frame_num - PMEM_BASE_FRAME; }
@@ -74,7 +87,6 @@ static void clear_frame(int frame_num) {
   frame_bitset[byte_num] &= mask;
 
   TracePrintf(0, "Frame 0x%3x is now deallocated\n", frame_num);
-
 }
 
 int find_frame(void) {
@@ -114,7 +126,6 @@ bool free_frame(int frame_num) {
 
   return true;
 }
-
 
 int destroy_pte(pte_t *base, int vpn) {
   base[vpn].valid = 0;
