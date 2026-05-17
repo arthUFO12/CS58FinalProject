@@ -46,6 +46,7 @@ void set_running_proc(pcb_t *new_proc) { running_proc = new_proc; }
 void increment_ticks() { num_ticks++; }
 
 bool init_scheduler(pcb_t *idle_proc) {
+  /*
   sleepers.arr = calloc(HEAP_INIT_SIZE, sizeof(pcb_t *));
   sleepers.length = 0;
   sleepers.current_size = HEAP_INIT_SIZE;
@@ -57,9 +58,11 @@ bool init_scheduler(pcb_t *idle_proc) {
     return false;
 
   return true;
+  */
 }
 
 pcb_t *put_to_sleep(pcb_t *proc, int t) {
+  /*
   proc->wake_up = num_ticks + t;
   if (queues[MAIN_QUEUE].length == 0 || !add_to_heap(proc)) {
     return proc;
@@ -71,9 +74,11 @@ pcb_t *put_to_sleep(pcb_t *proc, int t) {
   new_proc->state = RUNNING;
 
   return new_proc;
+  */
 }
 
 void wake_sleepers() {
+  /*
 
   while (sleepers.length > 0 && sleepers.arr[0]->wake_up <= num_ticks) {
     enque_process(MAIN_QUEUE, remove_from_heap());
@@ -104,4 +109,5 @@ pcb_t *run_diff_process(pcb_t *proc) {
   new_proc->state = RUNNING;
 
   return new_proc;
+  */
 }

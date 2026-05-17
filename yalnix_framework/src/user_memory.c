@@ -23,6 +23,7 @@ static int unmap_no_free(int vpn);
 static void change_prot(int vpn, int prot);
 
 bool init_region1_pt(pcb_t *idle) {
+  /*
   mem_ctx = &(idle->mem_ctx);
 
   TracePrintf(0, "Starting region 1 pt initialization\n");
@@ -38,6 +39,7 @@ bool init_region1_pt(pcb_t *idle) {
   mem_ctx->curr_brk_page = REGION1_BASE_VPN;
 
   return alloc_page(DOWN_TO_PAGE(VMEM_1_LIMIT - 1) >> PAGESHIFT, PROT_READ | PROT_WRITE);
+  */
 }
 
 int KernelBrk_Impl(void *addr, void *sp) {
@@ -71,6 +73,7 @@ UserContext *UCCopy(UserContext *uc_in, void *new_pcb_p, void *unused) {
 }
 
 bool alloc_region(int start_vpn, int end_vpn, int prot) {
+  /*
   if (start_vpn < REGION1_BASE_VPN || end_vpn > REGION1_BASE_VPN + REGION1_VPNS) {
     return false;
   }
@@ -83,9 +86,11 @@ bool alloc_region(int start_vpn, int end_vpn, int prot) {
   }
 
   return true;
+  */
 }
 
 void prot_region(int start_vpn, int end_vpn, int prot) {
+  /*
   if (start_vpn < REGION1_BASE_VPN || end_vpn > REGION1_BASE_VPN + REGION1_VPNS) {
     return;
   }
@@ -93,9 +98,11 @@ void prot_region(int start_vpn, int end_vpn, int prot) {
   for (int vpn = start_vpn; vpn < end_vpn; vpn++) {
     change_prot(vpn, prot);
   }
+  */
 }
 
 void UCSwitch(UserContext *uc_in, void *curr_pcb_p, void *next_pcb_p) {
+  /*
   pcb_t *curr_pcb = (pcb_t *)curr_pcb_p;
   pcb_t *next_pcb = (pcb_t *)next_pcb_p;
 
@@ -104,9 +111,12 @@ void UCSwitch(UserContext *uc_in, void *curr_pcb_p, void *next_pcb_p) {
   WriteRegister(REG_PTBR1, (unsigned int)(long)mem_ctx->region1_pt);
   WriteRegister(REG_PTLR1, REGION1_VPNS);
   WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
+  */
 }
 
 void undo_allocation(int first_vpn, int last_vpn) {
+  /*
   for (int vpn = first_vpn; vpn < last_vpn; vpn++)
     dealloc_page(vpn);
+  */
 }

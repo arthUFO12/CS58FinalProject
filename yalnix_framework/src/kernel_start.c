@@ -41,6 +41,7 @@ static void set_up_uc(UserContext *uc, void (*idle_func)(void), void *sp) {
  * @param uctxt Initial usercontext structure
  */
 void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
+  /*
   TracePrintf(0, "Inititializing kernel\n");
 
   initialize_frame_tracking(pmem_size);
@@ -68,4 +69,5 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   } else {
     set_up_uc(uctxt, do_idle, (void *)(VMEM_1_LIMIT - 1));
   }
+  */
 }
