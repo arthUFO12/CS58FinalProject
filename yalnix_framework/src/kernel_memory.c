@@ -4,10 +4,11 @@
  */
 
 #include "kernel_memory.h"
-#include "frame_tracking.h"
 #include "hardware.h"
 #include "ykernel.h"
 #include "ylib.h"
+
+#include "frame_tracking.h"
 
 static bool vm_enabled = false;
 
@@ -16,10 +17,10 @@ static pte_t region0_pt[REGION0_VPNS];
 
 static int current_brk_page;
 
+/* Helper Definitions */
 static bool alloc_page(int vpn, int prot);
 static bool dealloc_page(int vpn);
 static int unmap_no_free(int vpn);
-
 static void undo_allocation(int first_vpn, int last_vpn);
 
 void enable_vm(void) {
@@ -27,171 +28,67 @@ void enable_vm(void) {
   vm_enabled = true;
 }
 
-void init_kernel_brk(void) { current_brk_page = _orig_kernel_brk_page; }
+void init_kernel_brk(void) {
+  /*
+   set where kernel heap starts
+   */
+}
 
 bool init_region0_pt(pcb_t *idle_pcb) {
-  TracePrintf(0, "Starting region0 pt initialization\n");
+  /*
+   clear memory for table
 
-  memset(region0_pt, 0x00, sizeof(region0_pt));
+   map kernel text (readonly + exec)
+   map kernel data (read-write)
+   map kernel stack (read-write)
 
-  for (int vpn = _first_kernel_text_page; vpn < _first_kernel_data_page; vpn++) {
-    TracePrintf(0, "Acquiring vpn number 0x%x for kernel text\n", vpn);
-    if (!acquire_frame(vpn))
-      return false;
-    create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_EXEC);
-  }
+   copy stack into idle PCB
 
-  for (int vpn = _first_kernel_data_page; vpn < current_brk_page; vpn++) {
-    TracePrintf(0, "Acquiring vpn number 0x%x for kernel data\n", vpn);
+   add table to hardware register
 
-    if (!acquire_frame(vpn))
-      return false;
-    create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_WRITE);
-  }
-
-  for (int vpn = K_STACK_BASE_VPN; vpn < K_STACK_LIMIT_VPN; vpn++) {
-    TracePrintf(0, "Acquiring vpn number 0x%x for kernel stack\n", vpn);
-
-    if (!acquire_frame(vpn))
-      return false;
-    create_pte(region0_pt, vpn, vpn, PROT_READ | PROT_WRITE);
-  }
-
-  memcpy(idle_pcb->ks_pt, region0_pt + K_STACK_BASE_VPN, K_STACK_NUM_VPN * sizeof(pte_t));
-
-  TracePrintf(0, "Writing region 0 page table to register\n");
-
-  WriteRegister(REG_PTBR0, (unsigned int)(long)region0_pt);
-  WriteRegister(REG_PTLR0, REGION0_VPNS);
-
-  return true;
+  return status
+   */
 }
 
 int SetKernelBrk(void *addr) {
-  int heap_page = UP_TO_PAGE(addr) >> PAGESHIFT;
-  int stack_page = DOWN_TO_PAGE(KERNEL_STACK_BASE) >> PAGESHIFT;
+  /*
+   convert addr to page index
 
-  TracePrintf(0, "Setting Brk with,\n heap_page=%d\n stack_page=%d\n original_brk=%d\n", heap_page, stack_page,
-              _orig_kernel_brk_page);
-  if (heap_page < _orig_kernel_brk_page || heap_page >= stack_page - 2)
-    return ERROR;
+   check if heap would intersect stack
 
-  if (!vm_enabled) {
-    current_brk_page = heap_page;
-    return 0;
-  }
+   allocate or free pages
 
-  if (heap_page > current_brk_page) {
-    for (int vpn = current_brk_page; vpn < heap_page; vpn++) {
-      if (!alloc_page(vpn, PROT_READ | PROT_WRITE)) {
-        undo_allocation(current_brk_page, vpn);
-        return ERROR;
-      }
-    }
-  } else {
-    undo_allocation(heap_page, current_brk_page);
-  }
+   update break pointer
 
-  current_brk_page = heap_page;
-
-  return 0;
-}
-
-static void undo_allocation(int first_vpn, int last_vpn) {
-  for (int vpn = first_vpn; vpn < last_vpn; vpn++)
-    dealloc_page(vpn);
+   return status
+   */
 }
 
 KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *unused) {
-  pcb_t *new_pcb = (pcb_t *)new_pcb_p;
-  int true_brk_page = current_brk_page;
+  /*
+  extend kernel break to new page
 
-  if (SetKernelBrk((void *)(long)((true_brk_page + NUM_K_STACK_VPNS) << PAGESHIFT)) == ERROR) {
-    return NULL;
-  }
+  copy current kernel stack into new page
 
-  memcpy((void *)(long)(true_brk_page << PAGESHIFT), (void *)KERNEL_STACK_BASE, KERNEL_STACK_MAXSIZE);
+  give new page to new_pcb
 
-  pte_t *ks_pt = new_pcb->ks_pt;
+  restore original kernel break
 
-  for (int vpn = true_brk_page; vpn < true_brk_page + NUM_K_STACK_VPNS; vpn++) {
-    int pfn = unmap_no_free(vpn);
-    int shift = vpn - true_brk_page;
+  copy kernel context to new_pcb
 
-    ks_pt[shift].valid = 1;
-    ks_pt[shift].prot = PROT_READ | PROT_WRITE;
-    ks_pt[shift].pfn = pfn;
-  }
-
-  TracePrintf(0, "Set brk page to %d temporarily to copy kernel stack. True brk page is %d\n", current_brk_page,
-              true_brk_page);
-  current_brk_page = true_brk_page;
-
-  memcpy(&(new_pcb->kc), kc_in, sizeof(KernelContext));
-
-  return kc_in;
+  return old context
+  */
 }
 
 KernelContext *KCSwitch(KernelContext *kc_in, void *curr_pcb_p, void *next_pcb_p) {
 
-  pcb_t *curr_pcb = (pcb_t *)curr_pcb_p;
-  pcb_t *next_pcb = (pcb_t *)next_pcb_p;
+  /*
+  save current kernel registers into pcb
 
-  memcpy(&(curr_pcb->kc), kc_in, sizeof(KernelContext));
+  replace stack with new_pcb stack
 
-  memcpy(region0_pt + K_STACK_BASE_VPN, next_pcb->ks_pt, NUM_K_STACK_VPNS * sizeof(pte_t));
+  flush tlb
 
-  WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
-
-  return &(next_pcb->kc);
-}
-
-static bool alloc_page(int vpn, int prot) {
-  int pfn = find_frame();
-
-  if (pfn == ERROR)
-    return false;
-
-  if (vpn < REGION0_VPNS && vpn >= 0) {
-    create_pte(region0_pt, vpn, pfn, prot);
-    return true;
-  }
-
-  return false;
-}
-
-static bool dealloc_page(int vpn) {
-
-  if (vpn < REGION0_VPNS && vpn >= 0) {
-
-    if (region0_pt[vpn].valid == 0) {
-      return false;
-    }
-
-    int pfn = destroy_pte(region0_pt, vpn);
-    WriteRegister(REG_TLB_FLUSH, vpn << PAGESHIFT);
-
-    if (!free_frame(pfn)) {
-      return false;
-    }
-
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * @brief Deallocate page but do not return to frame buffer
- *
- * @param vpn Virtual Page Number
- * @return Page Frame Number or ERROR
- */
-static int unmap_no_free(int vpn) {
-  if (vpn < REGION0_VPNS && vpn >= 0) {
-    int pfn = destroy_pte(region0_pt, vpn);
-    WriteRegister(REG_TLB_FLUSH, vpn << PAGESHIFT);
-    return pfn;
-  }
-  return ERROR;
+  return next_pcb kernel ctxt
+  */
 }
