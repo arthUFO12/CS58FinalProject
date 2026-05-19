@@ -3,16 +3,16 @@
  * @brief Start the kernel
  */
 
-#include "frame_tracking.h"
 #include "hardware.h"
+#include "ylib.h"
+
+#include "frame_tracking.h"
 #include "interrupt.h"
 #include "kernel_memory.h"
 #include "load_program.h"
 #include "pcb.h"
 #include "scheduler.h"
 #include "user_memory.h"
-#include "ylib.h"
-#include <assert.h>
 
 static void do_idle(void) {
   while (1) {
