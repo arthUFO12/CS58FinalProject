@@ -1,15 +1,18 @@
-#include "hardware.h"
 /**
  * @file syscalls.c
  * @brief Define system calls
  */
-#include "interrupt.h"
-#include "scheduler.h"
-#include "user_memory.h"
+#include "hardware.h"
+#include "yalnix.h"
+#include "ykernel.h"
 #include "ylib.h"
-#include "interrupt.h"
 
+#include "hardware.h"
+#include "interrupt.h"
+#include "kernel_memory.h"
+#include "scheduler.h"
 #include "syscalls.h"
+#include "user_memory.h"
 
 void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
 
@@ -34,19 +37,21 @@ void KernelDelay(UserContext *uc) {
 }
 
 void KernelFork(UserContext *uc) {
-  /*
-  parent_pcb = get_running_proc()
 
-  new_pcb = create_new_pcb()
+  pcb_t *parent_pcb = get_running_proc();
 
-  //copy usercontext, duplicate page table, copy pages
-   UCopy()
+  pcb_t *child_pcb = create_new_pcb(NUM_K_STACK_VPNS, REGION1_VPNS, uc);
 
-  add child to calling process
+  // copy usercontext, duplicate page table, copy pages
+  UCCopy(&(parent_pcb->uc), child_pcb, NULL);
 
-  return 0 to child (regs[0] = 0)
-  return child pid to parent
-  */
+  child_pcb->pid = helper_new_pid(child_pcb->mem_ctx.region1_pt);
+  child_pcb->state = READY;
+
+  schedule_process(child_pcb);
+
+  // ucopy sets child_pcb->uc.regs[0] to 0 already
+  parent_pcb->uc.regs[0] = child_pcb->pid;
 }
 
 void KernelExec(UserContext *uc) {

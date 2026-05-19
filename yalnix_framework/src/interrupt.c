@@ -2,12 +2,15 @@
  * @file interrupt.c
  * @brief Handles context switching and responding to traps
  */
-#include "interrupt.h"
+#include "hardware.h"
+#include "yalnix.h"
+#include "ylib.h"
 
+#include "interrupt.h"
 #include "kernel_memory.h"
 #include "scheduler.h"
+#include "syscalls.h"
 #include "user_memory.h"
-#include "ylib.h"
 
 static void *interrupt_vector[TRAP_VECTOR_SIZE];
 
@@ -24,25 +27,54 @@ void FullContextSwitch(UserContext *uc_in, pcb_t *curr_proc, pcb_t *next_proc) {
     Halt();
   }
 }
+
 /* Trap Handlers */
 static void trap_kernel_handler(UserContext *uc) {
-  TracePrintf(1, "A trap kernel with code %x\n", uc->code);
-  /*
+  int syscall = uc->code;
 
-    save current ctxt into PCB
+  TracePrintf(1, "A trap kernel with code %x\n", syscall);
 
-    extract sycall from uctxt code
+  switch (syscall) {
 
-    switch syscall:
-      YALNIX_FORK;
-      YALNIX_EXEC;
-      YALNIX_EXIT;
-      ...
+  case YALNIX_FORK:
+    KernelFork(uc);
+    break;
 
-    return value from syscall to userprocess through regs[0] in uctxt
+  case YALNIX_EXEC:
+    KernelExec(uc);
+    break;
 
-    restore uctxt
-   */
+  case YALNIX_EXIT:
+    KernelExit(uc);
+    break;
+
+  case YALNIX_WAIT:
+    KernelWait(uc);
+    break;
+
+  case YALNIX_GETPID:
+    KernelGetPid(uc);
+    break;
+
+  case YALNIX_BRK:
+    KernelBrk(uc);
+    break;
+
+  case YALNIX_DELAY:
+    KernelDelay(uc);
+    break;
+
+  case YALNIX_TTY_READ:
+    KernelTtyRead(uc);
+    break;
+
+  case YALNIX_TTY_WRITE:
+    KernelTtyWrite(uc);
+    break;
+
+  default:
+    TracePrintf(0, "Illegal syscall %x", syscall);
+  }
 }
 
 static void trap_clock_handler(UserContext *uc) {
