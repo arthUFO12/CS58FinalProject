@@ -4,6 +4,8 @@
 #include "scheduler.h"
 #include "user_memory.h"
 #include "ylib.h"
+#include "yalnix.h"
+#include "syscalls.h"
 
 void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
   UCSwitch(next_proc);
@@ -51,10 +53,12 @@ static void trap_clock_handler(UserContext *uc) {
   increment_ticks();
   TracePrintf(1, "A trap clock occurred. \n");
 
-  memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
 
   pcb_t *curr_proc = get_running_proc();
+
+  memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
   schedule_process(curr_proc);
+
   pcb_t *next_proc = get_next_process();
 
   if (curr_proc != next_proc) {

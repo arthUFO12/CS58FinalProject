@@ -56,7 +56,7 @@ bool init_region0_pt(pcb_t *idle_pcb) {
   }
 
   memcpy(idle_pcb->ks_pt, region0_pt + K_STACK_BASE_VPN,
-         K_STACK_NUM_VPN * sizeof(pte_t));
+         K_STACK_VPNS * sizeof(pte_t));
 
   TracePrintf(0, "Writing region 0 page table to register\n");
 
@@ -101,7 +101,7 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *unused) {
   pcb_t *new_pcb = (pcb_t *)new_pcb_p;
   int true_brk_page = current_brk_page;
 
-  if (SetKernelBrk((void *)(long)((true_brk_page + NUM_K_STACK_VPNS)
+  if (SetKernelBrk((void *)(long)((true_brk_page + K_STACK_VPNS)
                                   << PAGESHIFT)) == ERROR) {
     return NULL;
   }
@@ -111,7 +111,7 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *unused) {
 
   pte_t *ks_pt = new_pcb->ks_pt;
 
-  for (int vpn = true_brk_page; vpn < true_brk_page + NUM_K_STACK_VPNS; vpn++) {
+  for (int vpn = true_brk_page; vpn < true_brk_page + K_STACK_VPNS; vpn++) {
     int pfn = unmap_no_free(vpn);
     int shift = vpn - true_brk_page;
 
@@ -141,7 +141,7 @@ KernelContext *KCSwitch(KernelContext *kc_in, void *curr_pcb_p,
     memcpy(&(curr_pcb->kc), kc_in, sizeof(KernelContext));
 
   memcpy(region0_pt + K_STACK_BASE_VPN, next_pcb->ks_pt,
-         NUM_K_STACK_VPNS * sizeof(pte_t));
+         K_STACK_VPNS * sizeof(pte_t));
 
   WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_KSTACK);
 

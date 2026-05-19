@@ -9,7 +9,7 @@ pcb_t *get_next_process(void);
 
 pcb_t *get_running_proc(void);
 
-pcb_t *put_to_sleep(pcb_t *proc, int t);
+bool put_to_sleep(pcb_t *proc, int t);
 
 void wake_sleepers(void);
 

@@ -3,10 +3,7 @@
 #include "pcb.h"
 #include "ylib.h"
 
-#define REGION0_VPNS (VMEM_0_SIZE >> PAGESHIFT)
-#define REGION1_VPNS (VMEM_1_SIZE >> PAGESHIFT)
-#define REGION1_BASE_VPN REGION0_VPNS
-#define REGION1_LIMIT_VPN (REGION1_BASE_VPN + REGION1_VPNS)
+
 
 static mem_ctx_t *mem_ctx;
 
@@ -169,7 +166,7 @@ void UCSwitch(pcb_t *next_pcb) {
 }
 
 void deallocate_region1() {
-  undo_allocation(REGION1_BASE_VPN, REGION1_LIMIT_VPN)
+  undo_allocation(REGION1_BASE_VPN, REGION1_LIMIT_VPN);
 }
 
 static bool alloc_page(int vpn, int prot) {

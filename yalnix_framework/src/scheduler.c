@@ -92,39 +92,42 @@ bool put_to_sleep(pcb_t *proc, int t) {
     return false;
   }
 
-  void io_block_process(pcb_t * new_proc) {
-    new_proc->state = WAITING;
-    enque_process(IO_BLOCKING_QUEUE, new_proc);
+}
+  
+
+void io_block_process(pcb_t * new_proc) {
+  new_proc->state = WAITING;
+  enque_process(IO_BLOCKING_QUEUE, new_proc);
+}
+
+void wait_block_process(pcb_t * new_proc) {
+  new_proc->state = WAITING;
+  enque_process(WAIT_BLOCKING_QUEUE, new_proc);
+}
+
+pcb_t *get_next_process() {
+
+  if (queues[MAIN_QUEUE].length == 0) {
+    return idle_proc;
   }
 
-  void wait_block_process(pcb_t * new_proc) {
-    new_proc->state = WAITING;
-    enque_process(WAIT_BLOCKING_QUEUE, new_proc);
-  }
+  pcb_t *new_proc = deque_process();
 
-  pcb_t *get_next_process() {
+  new_proc->state = RUNNING;
 
-    if (queues[MAIN_QUEUE].length == 0) {
-      return idle_proc;
-    }
+  return new_proc;
+}
 
-    pcb_t *new_proc = deque_process();
+static bool resize_heap(int size) {
+  pcb_t **temp = calloc(size, sizeof(pcb_t *));
 
-    new_proc->state = RUNNING;
+  if (temp == NULL)
+    return false;
 
-    return new_proc;
-  }
+  memcpy(temp, sleepers.arr, sleepers.length * sizeof(pcb_t *));
 
-  static bool resize_heap(int size) {
-    pcb_t **temp = calloc(size, sizeof(pcb_t *));
-
-    if (temp == NULL)
-      return false;
-
-    memcpy(temp, sleepers.arr, sleepers.length * sizeof(pcb_t *));
-
-    free(sleepers.arr);
-    sleepers.arr = temp;
+  free(sleepers.arr);
+  sleepers.arr = temp;
     sleepers.current_size = size;
 
     return true;
@@ -273,7 +276,7 @@ bool put_to_sleep(pcb_t *proc, int t) {
   }
 
   static bool io_unblock_cond(pcb_t * pcb, void *pid_p) {
-    pid_t pid = (pid_t)*pid_p;
+    pid_t pid = *((pid_t*) pid_p);
     return pcb->pid == pid;
   }
 

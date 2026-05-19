@@ -38,3 +38,12 @@ struct pcb {
 };
 
 pcb_t *create_new_pcb(int num_ks_pages, int num_region1_pte, UserContext *uc);
+
+void retire_pcb(pcb_t *pcb);
+
+bool find_exited_child(pcb_t *parent, int *output);
+
+bool add_child_proc(pcb_t *parent, pcb_t *child);
+
+
+

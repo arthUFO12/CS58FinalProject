@@ -67,7 +67,7 @@ compact:
     children[i] = children[i + 1];
 
   children[num_children - 1] = NULL;
-  parent->relationships.num_children--;
+  parent->relations.num_children--;
 
   if (num_children < arr_size / 2) {
     arr_size /= 2;
@@ -131,7 +131,7 @@ void retire_pcb(pcb_t *pcb) {
   helper_retire_pid(pcb->pid);
   free(pcb->ks_pt);
   free(pcb->mem_ctx.region1_pt);
-  free(pcb->relationships.children);
+  free(pcb->relations.children);
 
   if (!pcb->relations.has_parent)
     free(pcb);
