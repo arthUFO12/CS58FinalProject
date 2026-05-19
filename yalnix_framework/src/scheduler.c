@@ -169,7 +169,7 @@ pcb_t* put_to_sleep(pcb_t* proc, int t) {
 void wake_sleepers() {
 
   while (sleepers.length > 0 && sleepers.arr[0]->wake_up <= num_ticks) {
-    enque_process(MAIN_QUEUE, remove_from_heap());
+    schedule_process(remove_from_heap());
   }
 
 }

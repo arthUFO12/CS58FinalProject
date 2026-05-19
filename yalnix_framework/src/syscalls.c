@@ -7,12 +7,11 @@
 
 
 void KernelGetPid(UserContext* uc) {
-
   uc->regs[0] = get_running_proc()->pid;
 }
 
 void KernelBrk(UserContext* uc) {
-  uc->regs[0] = KernelBrk_Impl(uc->addr, uc->sp);
+  uc->regs[0] = KernelBrk_Impl(uc->regs[0], uc->sp);
 }
 
 void KernelDelay(UserContext* uc) {
@@ -22,6 +21,7 @@ void KernelDelay(UserContext* uc) {
   
   if (clock_ticks <= 0) {
     uc->regs[0] = (clock_ticks == 0) ? 0 : ERROR;
+    return;
   }
 
   pcb_t* new_proc = put_to_sleep(running_proc, clock_ticks);
