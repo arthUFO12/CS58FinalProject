@@ -1,16 +1,17 @@
 
+#include "bool.h"
 #include "hardware.h"
 #include "pcb.h"
-#include "bool.h"
 
-int KernelBrk_Impl(void* addr, void* sp);
+int KernelBrk_Impl(void *addr, void *sp);
 
+bool init_region1_pt(pcb_t *idle);
 
-bool init_region1_pt(pcb_t* idle);
+void UCSwitch(void *next_pcb_p);
 
-void UCSwitch(UserContext *uc_in, void* curr_pcb_p, void* next_pcb_p);
+bool UCCopy(UserContext *uc_in, pcb_t *new_pcb);
 
-void undo_allocation(int first_vpn, int last_vpn);
+void deallocate_region1(void);
 
 bool alloc_region(int start_vpn, int end_vpn, int prot);
 

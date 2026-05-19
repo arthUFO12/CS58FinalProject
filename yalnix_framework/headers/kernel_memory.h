@@ -11,8 +11,7 @@
 
 void enable_vm(void);
 
-bool init_region0_pt(pcb_t* idle_pcb);
-
+bool init_region0_pt(pcb_t *idle_pcb);
 
 KernelContext *KCSwitch(KernelContext *kc_in, void *curr_pcb_p,
                         void *next_pcb_p);
@@ -21,5 +20,4 @@ KernelContext *KCCopy(KernelContext *kc_in, void *new_pcb_p, void *unused);
 
 void init_kernel_brk(void);
 
-
-
+void deallocate_kernel_stack(void);
