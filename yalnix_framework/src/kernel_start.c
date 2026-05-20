@@ -32,8 +32,8 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   init_kernel_brk();
   init_interrupt_vector();
 
-  pcb_t *idle_pcb = create_new_pcb(NUM_K_STACK_VPNS, REGION1_VPNS, uctxt);
-  pcb_t *init_pcb = create_new_pcb(NUM_K_STACK_VPNS, REGION1_VPNS, uctxt);
+  pcb_t *idle_pcb = create_new_pcb(K_STACK_VPNS, REGION1_VPNS, uctxt);
+  pcb_t *init_pcb = create_new_pcb(K_STACK_VPNS, REGION1_VPNS, uctxt);
 
   init_region0_pt(idle_pcb);
   init_region1_pt(idle_pcb);

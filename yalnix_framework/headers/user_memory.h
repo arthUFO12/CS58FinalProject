@@ -27,3 +27,6 @@ void deallocate_region1(void);
 bool alloc_region(int start_vpn, int end_vpn, int prot);
 
 void prot_region(int start_vpn, int end_vpn, int prot);
+
+
+

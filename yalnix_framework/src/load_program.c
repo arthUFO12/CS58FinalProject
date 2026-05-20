@@ -139,6 +139,8 @@ int LoadProgram(char *name, char *args[], pcb_t *proc)
    * ==>> (rewrite the line below to match your actual data structure)
    * ==>> proc->uc.sp = cp2;
    */
+  proc->uc.sp = cp2;
+
 
   /*
    * Now save the arguments in a separate buffer in region 0, since
@@ -154,9 +156,6 @@ int LoadProgram(char *name, char *args[], pcb_t *proc)
     close(fd);
     return ERROR;
   }
-
-  memset(&(proc->uc), 0x00, sizeof(UserContext));
-  proc->uc.sp = cp2;
 
   for (i = 0; args[i] != NULL; i++) {
     TracePrintf(3, "saving arg %d = '%s'\n", i, args[i]);

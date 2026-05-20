@@ -1,4 +1,4 @@
-#include "hardware.h"
+#include "syscalls.h"
 #include "interrupt.h"
 #include "kernel_memory.h"
 #include "load_program.h"
@@ -11,7 +11,7 @@
 void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
 
 void KernelBrk(UserContext *uc) {
-  uc->regs[0] = KernelBrk_Impl(uc->addr, uc->sp);
+  uc->regs[0] = KernelBrk_Impl((void*) uc->regs[0], uc->sp);
 }
 
 void KernelDelay(UserContext *uc) {
@@ -26,7 +26,7 @@ void KernelDelay(UserContext *uc) {
   if (put_to_sleep(running_proc, clock_ticks)) {
     uc->regs[0] = 0;
 
-    pcb_t *new_proc = get_next_proc();
+    pcb_t *new_proc = get_next_process();
     FullContextSwitch(running_proc, new_proc);
   } else {
     uc->regs[0] = ERROR;
@@ -35,9 +35,11 @@ void KernelDelay(UserContext *uc) {
 
 void KernelExit(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
+
+  if (running_proc->pid == 1) Halt();
   pcb_t *new_proc = get_next_process();
 
-  running_proc->exit_code = (uc == NULL) ? -1 : uc->regs[0];
+  running_proc->exit_code = (uc == NULL) ? -1 : (int) uc->regs[0];
   running_proc->state = EXITED;
 
   deallocate_region1();
@@ -64,16 +66,16 @@ void KernelExec(UserContext *uc) {
 
 void KernelFork(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
-  pcb_t *new_proc = create_new_pcb(K_STACK_NUM_VPN, REGION1_VPNS, uc);
+  pcb_t *new_proc = create_new_pcb(K_STACK_VPNS, REGION1_VPNS, uc);
 
   if (!UCCopy(uc, new_proc)) {
-    uc.regs[0] = ERROR;
+    uc->regs[0] = ERROR;
     retire_pcb(new_proc);
     free(new_proc);
     return;
   }
 
-  uc.regs[0] = new_proc->pid;
+  uc->regs[0] = new_proc->pid;
   new_proc->uc.regs[0] = 0;
 
   add_child_proc(running_proc, new_proc);
@@ -85,7 +87,7 @@ void KernelFork(UserContext *uc) {
 
 void KernelWait(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
-  if (!find_exited_child(running_proc, (int *)running_proc->uc.regs[0])) {
+  if (!find_exited_child(running_proc, (int*) uc->regs[0])) {
     wait_block_process(running_proc);
 
     pcb_t *new_proc = get_next_process();

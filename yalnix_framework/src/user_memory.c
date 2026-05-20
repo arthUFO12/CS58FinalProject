@@ -33,6 +33,7 @@ bool init_region1_pt(pcb_t *idle) {
                     PROT_READ | PROT_WRITE);
 }
 
+
 int KernelBrk_Impl(void *addr, void *sp) {
   int heap_page = UP_TO_PAGE(addr) >> PAGESHIFT;
   int stack_page = DOWN_TO_PAGE(sp) >> PAGESHIFT;
@@ -66,7 +67,7 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
   int txt_page = mem_ctx->txt_start_page;
   int data_page = mem_ctx->data_start_page;
   int brk_page = mem_ctx->curr_brk_page;
-  int stack_page = DOWN_TO_PAGE(uc_in->sp);
+  int stack_page = DOWN_TO_PAGE(uc_in->sp) >> PAGESHIFT;
 
   void *brk_addr = (void *)(brk_page << PAGESHIFT);
 
@@ -105,7 +106,7 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
         PROT_READ | PROT_WRITE;
   }
 
-  for (int vpn = stack_page; vpn < REGION1_VPNS; vpn++) {
+  for (int vpn = stack_page; vpn < REGION1_LIMIT_VPN; vpn++) {
     if (!alloc_page(brk_page, PROT_READ | PROT_WRITE)) {
       destroy_pt(new_pcb->mem_ctx.region1_pt, 0, vpn - REGION1_BASE_VPN);
       return false;

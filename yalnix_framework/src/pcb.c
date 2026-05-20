@@ -54,7 +54,7 @@ bool find_exited_child(pcb_t *parent, int *output) {
 
   for (; i < num_children; i++) {
     if (children[i]->state == EXITED) {
-      *output = children[i]->exit_code;
+      if (output != NULL) *output = children[i]->exit_code;
       free(children[i]);
       goto compact;
     }
@@ -112,7 +112,7 @@ bool add_child_proc(pcb_t *parent, pcb_t *child) {
   }
 
   children[num_children] = child;
-  num_children++;
+  parent->relations.num_children++;
 
   return true;
 }

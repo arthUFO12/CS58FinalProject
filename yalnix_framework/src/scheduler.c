@@ -77,6 +77,8 @@ void wake_waiters() {
 }
 
 void schedule_process(pcb_t *new_proc) {
+  if (new_proc == idle_proc) return;
+
   new_proc->state = READY;
   enque_process(MAIN_QUEUE, new_proc);
 }
@@ -221,8 +223,8 @@ static bool resize_heap(int size) {
     queues[type].length++;
 
     TracePrintf(0,
-                "Enqued pcb with pid %d\nSize is now %d\nFirst in line is %d\n",
-                pcb->pid, queues[type].length, queues[type].first->pid);
+                "Enqued pcb with pid %d to queue number %d\nSize is now %d\nFirst in line is %d\n",
+                pcb->pid, type, queues[type].length, queues[type].first->pid);
   }
 
   static pcb_t *deque_process() {
