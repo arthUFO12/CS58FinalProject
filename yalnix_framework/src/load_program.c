@@ -1,8 +1,8 @@
 /*
- * ==>> This is a TEMPLATE for how to write your own LoadProgram function.
- * ==>> Places where you must change this file to work with your kernel are
- * ==>> marked with "==>>".  You must replace these lines with your own code.
- * ==>> You might also want to save the original annotations as comments.
+ * Load program implementation for Yalnix.
+ * This file loads a Yalnix-format executable into user memory,
+ * sets up the process stack and break point, and initializes the
+ * process entry point and memory segments.
  */
 
 #include <fcntl.h>
@@ -16,23 +16,12 @@
 #define REGION1_LIMIT_VPN (VMEM_1_LIMIT >> PAGESHIFT)
 
 /*
- * ==>> #include anything you need for your kernel here
+ * Load a program image from disk, build the region 1 address space,
+ * and initialize the process stack and program arguments.
  */
 
-/*
- *  Load a program into an existing address space.  The program comes from
- *  the Linux file named "name", and its arguments come from the array at
- *  "args", which is in standard argv format.  The argument "proc" points
- *  to the process or PCB structure for the process into which the program
- *  is to be loaded. 
- */
-
-/*
- * ==>> Declare the argument "proc" to be a pointer to the PCB of 
- * ==>> the current process. 
- */
 int
-LoadProgram(char *name, char *args[], pcb_t* proc) 
+LoadProgram(char *name, char *args[], pcb_t* proc)
 
 {
   int fd;
@@ -158,10 +147,7 @@ LoadProgram(char *name, char *args[], pcb_t* proc)
   cp2 = argbuf = (char *)malloc(size);
 
 
-  /* 
-   * ==>> You should perhaps check that malloc returned valid space 
-   */
-
+  /* Ensure the argument buffer allocation succeeded. */
   if (cp2 == NULL) {
     close(fd);
     return ERROR;
@@ -180,11 +166,10 @@ LoadProgram(char *name, char *args[], pcb_t* proc)
    * allocated, and set them all to writable.
    */
 
-  /* ==>> Throw away the old region 1 virtual address space by
-   * ==>> curent process by walking through the R1 page table and,
-   * ==>> for every valid page, free the pfn and mark the page invalid.
+  /*
+   * Free any existing region 1 mappings for this process before loading a new image.
+   * This releases physical pages and invalidates the old page table entries.
    */
-
   undo_allocation(REGION1_BASE_VPN, REGION1_LIMIT_VPN);
 
   /*
@@ -193,32 +178,23 @@ LoadProgram(char *name, char *args[], pcb_t* proc)
    */
 
   /*
-   * ==>> First, text. Allocate "li.t_npg" physical pages and map them starting at
-   * ==>> the "text_pg1" page in region 1 address space.
-   * ==>> These pages should be marked valid, with a protection of
-   * ==>> (PROT_READ | PROT_WRITE).
+   * Allocate and map the text segment pages in region 1. These pages are loaded
+   * from the executable and temporarily marked writable for the load.
    */
-
   int global_text_pg1 = text_pg1 + REGION1_BASE_VPN;
   alloc_region(global_text_pg1, global_text_pg1 + li.t_npg, PROT_READ | PROT_WRITE);
 
   /*
-   * ==>> Then, data. Allocate "data_npg" physical pages and map them starting at
-   * ==>> the  "data_pg1" in region 1 address space.
-   * ==>> These pages should be marked valid, with a protection of
-   * ==>> (PROT_READ | PROT_WRITE).
+   * Allocate and map the data and BSS segments in region 1. These pages remain
+   * writable while the program is initialized.
    */
-
   int global_data_pg1 = data_pg1 + REGION1_BASE_VPN;
   alloc_region(global_data_pg1, global_data_pg1 + data_npg, PROT_READ | PROT_WRITE);
 
-  /* 
-   * ==>> Then, stack. Allocate "stack_npg" physical pages and map them to the top
-   * ==>> of the region 1 virtual address space.
-   * ==>> These pages should be marked valid, with a
-   * ==>> protection of (PROT_READ | PROT_WRITE).
+  /*
+   * Allocate the user stack pages at the top of region 1.
+   * The stack is writable for program execution and argument setup.
    */
-
   alloc_region(REGION1_LIMIT_VPN - stack_npg, REGION1_LIMIT_VPN, PROT_READ | PROT_WRITE);
   /*
    * ==>> (Finally, make sure that there are no stale region1 mappings left in the TLB!)
@@ -256,17 +232,9 @@ LoadProgram(char *name, char *args[], pcb_t* proc)
 
 
   /*
-   * ==>> Above, you mapped the text pages as writable, so this code could write
-   * ==>> the new text there.
-   *
-   * ==>> But now, you need to change the protections so that the machine can execute
-   * ==>> the text.
-   *
-   * ==>> For each text page in region1, change the protection to (PROT_READ | PROT_EXEC).
-   * ==>> If any of these page table entries is also in the TLB, 
-   * ==>> you will need to flush the old mapping. 
+   * After loading the executable image, change the text pages so they are
+   * executable rather than writable. This enforces code segment protection.
    */
-
   prot_region(global_text_pg1, global_text_pg1 + li.t_npg, PROT_READ | PROT_EXEC);
 
   
@@ -276,14 +244,8 @@ LoadProgram(char *name, char *args[], pcb_t* proc)
   bzero((void*) li.id_end, li.ud_end - li.id_end);
 
   /*
-   * Set the entry point in the process's UserContext
+   * Set the entry point for the loaded program in the process context.
    */
-
-  /* 
-   * ==>> (rewrite the line below to match your actual data structure) 
-   * ==>> proc->uc.pc = (caddr_t) li.entry;
-   */
-
   proc->uc.pc = (void*) li.entry;
 
   proc->mem_ctx.txt_start_page = global_text_pg1;

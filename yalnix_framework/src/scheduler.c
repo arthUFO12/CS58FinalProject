@@ -2,6 +2,10 @@
 #include "bool.h"
 #include "ylib.h"
 
+/*
+ * Scheduler implementation for Yalnix.
+ * Maintains ready and blocked queues as well as a min-heap for sleeping processes.
+ */
 #define HEAP_INIT_SIZE 20
 #define HEAP_MIN_SIZE 5
 
@@ -37,19 +41,22 @@ static bool add_to_heap(pcb_t* p);
 static pcb_t* remove_from_heap(void);
 
 
+/* Return the PCB for the currently running process. */
 pcb_t* get_running_proc() {
   return running_proc;
 }
 
+/* Update the currently running process pointer. */
 void set_running_proc(pcb_t* new_proc) {
   running_proc = new_proc;
 }
 
+/* Increment the global tick counter used by sleeping processes. */
 void increment_ticks() {
   num_ticks++;
 }
 
-
+/* Initialize scheduler state for the idle process. */
 bool init_scheduler(pcb_t* idle_proc) {
   sleepers.arr = calloc(HEAP_INIT_SIZE, sizeof(pcb_t*));
   sleepers.length = 0;
@@ -63,6 +70,7 @@ bool init_scheduler(pcb_t* idle_proc) {
   return true;
 }
 
+/* Resize the sleep heap array to the requested capacity. */
 static bool resize_heap(int size) {
   pcb_t** temp = calloc(size, sizeof(pcb_t*));
 
@@ -77,10 +85,12 @@ static bool resize_heap(int size) {
   return true;
 }
 
+/* Compare two sleeping processes by wake-up tick time. */
 static bool compare(pcb_t* a, pcb_t* b) {
   return a->wake_up < b->wake_up;
 }
 
+/* Add a process to the min-heap of sleeping processes. */
 static bool add_to_heap(pcb_t* p) {
   if (sleepers.length >= sleepers.current_size 
       && !resize_heap(sleepers.current_size * 2)) {
@@ -108,21 +118,19 @@ static bool add_to_heap(pcb_t* p) {
   return true;
 }
 
+/* Remove and return the earliest waking process from the heap. */
 static pcb_t* remove_from_heap(void) {
   if (sleepers.length == 0) {
     return NULL;
   }
-  
-  pcb_t* to_return = sleepers.arr[0];
 
+  pcb_t* to_return = sleepers.arr[0];
   int i = 0;
   sleepers.arr[i] = sleepers.arr[--sleepers.length];
-
 
   while (true) {
     int left = 2 * i + 1;
     int right = 2 * i + 2;
-
     int least = i;
 
     if (left < sleepers.length && compare(sleepers.arr[left], sleepers.arr[least])) {
@@ -140,7 +148,6 @@ static pcb_t* remove_from_heap(void) {
     pcb_t* temp = sleepers.arr[least];
     sleepers.arr[least] = sleepers.arr[i];
     sleepers.arr[i] = temp;
-
     i = least;
   }
 
@@ -152,6 +159,7 @@ static pcb_t* remove_from_heap(void) {
 }
 
 
+/* Put the current process to sleep for t ticks and possibly schedule another one. */
 pcb_t* put_to_sleep(pcb_t* proc, int t) {
   proc->wake_up = num_ticks + t;
   if (queues[MAIN_QUEUE].length == 0 || !add_to_heap(proc)) {
@@ -159,46 +167,43 @@ pcb_t* put_to_sleep(pcb_t* proc, int t) {
   }
 
   pcb_t* new_proc = deque_process();
-  
   proc->state = WAITING;
   new_proc->state = RUNNING;
-
   return new_proc;
 }
 
+/* Wake all sleeping processes whose wake-up time has arrived. */
 void wake_sleepers() {
-
   while (sleepers.length > 0 && sleepers.arr[0]->wake_up <= num_ticks) {
     schedule_process(remove_from_heap());
   }
-
 }
+/* Enqueue a process on the ready queue. */
 void schedule_process(pcb_t* new_proc) {
   new_proc->state = READY;
   enque_process(MAIN_QUEUE, new_proc);
 }
 
+/* Enqueue a process on the blocked queue. */
 void block_process(pcb_t* new_proc) {
   new_proc->state = WAITING;
   enque_process(BLOCKING_QUEUE, new_proc);
 }
 
+/* Choose a different ready process to run, requeueing the current process. */
 pcb_t* run_diff_process(pcb_t * proc) {
-
   if (queues[MAIN_QUEUE].length == 0) {
     return proc;
   }
 
   pcb_t* new_proc = deque_process();
-
   enque_process(MAIN_QUEUE, proc);
-
   proc->state = READY;
   new_proc->state = RUNNING;
-
   return new_proc;
 }
 
+/* Enqueue a process at the end of the specified queue. */
 static void enque_process(enum queue_type type, pcb_t *pcb) {
   if (queues[type].length == 0) {
     queues[type].first = pcb;
@@ -215,8 +220,8 @@ static void enque_process(enum queue_type type, pcb_t *pcb) {
   TracePrintf(0, "Enqued pcb with pid %d\nSize is now %d\nFirst in line is %d\n", pcb->pid, queues[type].length, queues[type].first->pid);
 }
 
+/* Dequeue the next process from the main ready queue. */
 static pcb_t *deque_process() {
-
   if (queues[MAIN_QUEUE].length == 0)
     return NULL;
 
@@ -228,17 +233,15 @@ static pcb_t *deque_process() {
     queues[MAIN_QUEUE].last = NULL;
 
   popped->next = NULL;
-
   return popped;
 }
 
+/* Find and remove the blocked process with the given PID. */
 static pcb_t* find_blocked_process(pid_t pid) {
-
   pcb_t* prev = NULL;
   pcb_t* curr = queues[BLOCKING_QUEUE].first;
 
   while (curr != NULL) {
-
     if (curr->pid == pid) {
       if (prev == NULL) {
         queues[BLOCKING_QUEUE].first = curr->next;
