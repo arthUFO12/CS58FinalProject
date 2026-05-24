@@ -7,7 +7,13 @@
 #include "yalnix.h"
 #include "syscalls.h"
 
+/*
+ * Interrupt and trap handling for the Yalnix kernel.
+ * This module dispatches traps and syscalls, and performs kernel
+ * context switches when needed.
+ */
 
+/* Perform a full context switch between two processes. */
 void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
   UCSwitch(next_proc);
   set_running_proc(next_proc);
@@ -35,6 +41,7 @@ static void trap_not_implemented(UserContext *uc);
 
 static void *interrupt_vector[TRAP_VECTOR_SIZE];
 
+/* Initialize the hardware trap vector to dispatch kernel handlers. */
 void init_interrupt_vector() {
   for (int i = 0; i < TRAP_VECTOR_SIZE; i++) {
     interrupt_vector[i] = (void *)trap_not_implemented;
@@ -50,6 +57,7 @@ void init_interrupt_vector() {
 
 
 
+/* Dispatch a kernel trap to the appropriate syscall handler. */
 static void trap_kernel_handler(UserContext *uc) {
   TracePrintf(2, "A trap kernel with code %x\n", uc->code);
 
@@ -98,6 +106,7 @@ static void trap_kernel_handler(UserContext *uc) {
   memcpy(uc, &(curr_proc->uc), sizeof(UserContext));
 }
 
+/* Handle the clock interrupt, update ticks, and reschedule processes. */
 static void trap_clock_handler(UserContext *uc) {
   increment_ticks();
   wake_waiters();
@@ -122,15 +131,18 @@ static void trap_clock_handler(UserContext *uc) {
   memcpy(uc, &(curr_proc->uc), sizeof(UserContext));
 }
 
+/* Default handler for any trap code that has not been implemented. */
 static void trap_not_implemented(UserContext *uc) {
   TracePrintf(0, "A trap that isn't implemented occurred\n");
   TracePrintf(0, "Addr: %#x, Maperr? %d, Accerr? %d\n", uc->addr, uc->code == YALNIX_MAPERR, uc->code == YALNIX_ACCERR);
 }
 
+/* Terminate the process on a floating point or math exception. */
 static void trap_math_handler(UserContext *unused) {
   KernelExit(NULL);
 }
 
+/* Terminate the process on an illegal instruction trap. */
 static void trap_illegal_handler(UserContext *unused) {
   KernelExit(NULL);
 }

@@ -16,44 +16,42 @@ static byte_t *frame_bitset;
 static int next_free;
 static int NUM_FRAMES;
 
+/*
+ * Initialize physical frame tracking. The frame bitset represents which
+ * physical frames are free or in use.
+ */
 bool initialize_frame_tracking(int pmem_size) {
-  
   TracePrintf(0, "Starting frame tracking initialization\n");
+
   int pmem_frame_limit = DOWN_TO_PAGE(pmem_size) >> PAGESHIFT;
   NUM_FRAMES = pmem_frame_limit - PMEM_BASE_FRAME;
   int bitset_size = UP_TO_BYTE(NUM_FRAMES) >> BYTE_SHIFT;
   frame_bitset = calloc(bitset_size, sizeof(byte_t));
 
   next_free = 0;
-
   TracePrintf(10, "Frame bitset location: %p\n", frame_bitset);
 
-  if (frame_bitset != NULL) {
-    return true;
-  }
-
-  return false;
+  return frame_bitset != NULL;
 }
 
-static int add_base(int frame_num) { return frame_num + PMEM_BASE_FRAME; }
+static int add_base(int frame_num) {
+  return frame_num + PMEM_BASE_FRAME;
+}
 
-static int subtract_base(int frame_num) { return frame_num - PMEM_BASE_FRAME; }
+static int subtract_base(int frame_num) {
+  return frame_num - PMEM_BASE_FRAME;
+}
 
 static bool check_if_free(int frame_num) {
   int byte_num = frame_num >> BYTE_SHIFT;
-
   if (frame_bitset[byte_num] == FULL_BYTE)
     return false;
 
   int bit_offset = frame_num & BIT_OFFSET;
   byte_t mask = 1 << bit_offset;
-
   byte_t entry = frame_bitset[byte_num] & mask;
 
-  if (entry == 0)
-    return true;
-  else
-    return false;
+  return entry == 0;
 }
 
 static void set_frame(int frame_num) {
@@ -62,7 +60,6 @@ static void set_frame(int frame_num) {
   byte_t mask = 1 << bit_offset;
 
   frame_bitset[byte_num] |= mask;
-
   TracePrintf(5, "Frame %#x is now in use\n", frame_num);
 }
 
@@ -72,13 +69,11 @@ static void clear_frame(int frame_num) {
   byte_t mask = ~(1 << bit_offset);
 
   frame_bitset[byte_num] &= mask;
-
   TracePrintf(5, "Frame %#x is now free\n", frame_num);
-
 }
 
+/* Find the next free physical frame. Returns the global frame number or ERROR. */
 int find_frame(void) {
-
   while (!check_if_free(next_free) && next_free < NUM_FRAMES)
     next_free++;
 
@@ -86,24 +81,22 @@ int find_frame(void) {
     return ERROR;
 
   set_frame(next_free);
-
   return add_base(next_free++);
 }
 
+/* Reserve a specific physical frame number. */
 bool acquire_frame(int pfn) {
   pfn = subtract_base(pfn);
-
   if (!check_if_free(pfn))
     return false;
 
   set_frame(pfn);
-
   return true;
 }
 
+/* Free a physical frame so it can be reused. */
 bool free_frame(int frame_num) {
   frame_num = subtract_base(frame_num);
-
   if (frame_num < 0 || frame_num >= NUM_FRAMES)
     return false;
   if (check_if_free(frame_num))
@@ -111,16 +104,16 @@ bool free_frame(int frame_num) {
 
   clear_frame(frame_num);
   next_free = (frame_num < next_free) ? frame_num : next_free;
-
   return true;
 }
 
-
+/* Destroy a page table entry and return its frame number. */
 int destroy_pte(pte_t *base, int vpn) {
   base[vpn].valid = 0;
   return base[vpn].pfn;
 }
 
+/* Create or update a page table entry with the given mapping and protection. */
 void create_pte(pte_t *base, int vpn, int pfn, int prot) {
   base[vpn].valid = 1;
   base[vpn].pfn = pfn;

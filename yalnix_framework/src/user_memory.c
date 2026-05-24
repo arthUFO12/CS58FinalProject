@@ -3,7 +3,11 @@
 #include "pcb.h"
 #include "ylib.h"
 
-
+/*
+ * Region 1 memory management for user processes.
+ * This module allocates and frees user pages, manages brk growth,
+ * and switches the active region 1 page table for context switches.
+ */
 
 static mem_ctx_t *mem_ctx;
 
@@ -14,11 +18,14 @@ static void change_prot(int vpn, int prot);
 static void undo_allocation(int first_vpn, int last_vpn);
 static void destroy_pt(pte_t *pt, int first, int last);
 
+/*
+ * Initialize the region 1 page table registers for the idle process.
+ * The region 1 page table base is written into the hardware registers.
+ */
 bool init_region1_pt(pcb_t *idle) {
   mem_ctx = &(idle->mem_ctx);
 
   TracePrintf(2, "Starting region 1 pt initialization\n");
-
   TracePrintf(2, "Writing region1 page table to register\n");
 
   WriteRegister(REG_PTBR1, (unsigned int)(long)mem_ctx->region1_pt);
@@ -33,7 +40,10 @@ bool init_region1_pt(pcb_t *idle) {
                     PROT_READ | PROT_WRITE);
 }
 
-
+/*
+ * KernelBrk_Impl adjusts the user heap break for the current process.
+ * It allocates or deallocates region 1 pages as required by the new break.
+ */
 int KernelBrk_Impl(void *addr, void *sp) {
   int heap_page = UP_TO_PAGE(addr) >> PAGESHIFT;
   int stack_page = DOWN_TO_PAGE(sp) >> PAGESHIFT;
@@ -63,12 +73,15 @@ int KernelBrk_Impl(void *addr, void *sp) {
   return 0;
 }
 
+/*
+ * Copy the current process's user memory layout to a new PCB for fork.
+ * The caller provides the user context to duplicate and the new child PCB.
+ */
 bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
   int txt_page = mem_ctx->txt_start_page;
   int data_page = mem_ctx->data_start_page;
   int brk_page = mem_ctx->curr_brk_page;
   int stack_page = DOWN_TO_PAGE(uc_in->sp) >> PAGESHIFT;
-
   void *brk_addr = (void *)(brk_page << PAGESHIFT);
 
   if (brk_page >= stack_page) {
@@ -83,7 +96,6 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
     memcpy(brk_addr, (void *)(long)(vpn << PAGESHIFT), PAGESIZE);
 
     int pfn = unmap_no_free(brk_page);
-
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].pfn = pfn;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].valid = 1;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].prot =
@@ -95,11 +107,9 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
       destroy_pt(new_pcb->mem_ctx.region1_pt, 0, vpn - REGION1_BASE_VPN);
       return false;
     }
-
     memcpy(brk_addr, (void *)(vpn << PAGESHIFT), PAGESIZE);
 
     int pfn = unmap_no_free(brk_page);
-
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].pfn = pfn;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].valid = 1;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].prot =
@@ -111,11 +121,9 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
       destroy_pt(new_pcb->mem_ctx.region1_pt, 0, vpn - REGION1_BASE_VPN);
       return false;
     }
-
     memcpy(brk_addr, (void *)(long)(vpn << PAGESHIFT), PAGESIZE);
 
     int pfn = unmap_no_free(brk_page);
-
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].pfn = pfn;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].valid = 1;
     new_pcb->mem_ctx.region1_pt[vpn - REGION1_BASE_VPN].prot =
@@ -127,10 +135,10 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
   new_pcb->mem_ctx.curr_brk_page = brk_page;
 
   memcpy(&(new_pcb->uc), uc_in, sizeof(UserContext));
-
   return true;
 }
 
+/* Allocate a contiguous range of region 1 pages with the requested protection. */
 bool alloc_region(int start_vpn, int end_vpn, int prot) {
   if (start_vpn < REGION1_BASE_VPN ||
       end_vpn > REGION1_BASE_VPN + REGION1_VPNS) {
@@ -147,6 +155,7 @@ bool alloc_region(int start_vpn, int end_vpn, int prot) {
   return true;
 }
 
+/* Change protection bits for a range of region 1 pages. */
 void prot_region(int start_vpn, int end_vpn, int prot) {
   if (start_vpn < REGION1_BASE_VPN ||
       end_vpn > REGION1_BASE_VPN + REGION1_VPNS) {
@@ -158,6 +167,9 @@ void prot_region(int start_vpn, int end_vpn, int prot) {
   }
 }
 
+/*
+ * Switch the active region 1 page table to the specified next process.
+ */
 void UCSwitch(pcb_t *next_pcb) {
   mem_ctx = &(next_pcb->mem_ctx);
 
@@ -166,15 +178,14 @@ void UCSwitch(pcb_t *next_pcb) {
   WriteRegister(REG_TLB_FLUSH, TLB_FLUSH_1);
 }
 
-void deallocate_region1() {
+/* Deallocate and unmap all region 1 pages for the current process. */
+void deallocate_region1(void) {
   undo_allocation(REGION1_BASE_VPN, REGION1_LIMIT_VPN);
 }
 
 static bool alloc_page(int vpn, int prot) {
   vpn = vpn - REGION1_BASE_VPN;
-
   int pfn = find_frame();
-
   if (pfn == -1)
     return false;
 
@@ -188,16 +199,13 @@ static bool alloc_page(int vpn, int prot) {
 
 static bool dealloc_page(int vpn) {
   int relative_vpn = vpn - REGION1_BASE_VPN;
-
   if (relative_vpn < REGION1_VPNS && relative_vpn >= 0) {
-
     if (mem_ctx->region1_pt[relative_vpn].valid == 0) {
       return false;
     }
 
     int pfn = destroy_pte(mem_ctx->region1_pt, relative_vpn);
     WriteRegister(REG_TLB_FLUSH, vpn << PAGESHIFT);
-
     if (!free_frame(pfn))
       return false;
 
@@ -209,11 +217,9 @@ static bool dealloc_page(int vpn) {
 
 static void change_prot(int vpn, int prot) {
   int relative_vpn = vpn - REGION1_BASE_VPN;
-
   if (relative_vpn >= REGION1_VPNS || relative_vpn < 0) {
     return;
   }
-
   if (mem_ctx->region1_pt[relative_vpn].valid == 0) {
     return;
   }
@@ -238,6 +244,10 @@ static void undo_allocation(int first_vpn, int last_vpn) {
     dealloc_page(vpn);
 }
 
+/*
+ * Free frame resources for a copied page table without unmapping them.
+ * Used to clean up page tables when a copy fails.
+ */
 static void destroy_pt(pte_t *pt, int first, int last) {
   for (int vpn = first; vpn < last; vpn++) {
     if (pt[vpn].valid == 1) {
