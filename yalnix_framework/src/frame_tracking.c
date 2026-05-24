@@ -26,7 +26,7 @@ bool initialize_frame_tracking(int pmem_size) {
 
   next_free = 0;
 
-  TracePrintf(0, "Frame bitset location: %p\n", frame_bitset);
+  TracePrintf(10, "Frame bitset location: %p\n", frame_bitset);
 
   if (frame_bitset != NULL) {
     return true;
@@ -63,7 +63,7 @@ static void set_frame(int frame_num) {
 
   frame_bitset[byte_num] |= mask;
 
-  TracePrintf(0, "Frame %#x is now in use\n", frame_num);
+  TracePrintf(5, "Frame %#x is now in use\n", frame_num);
 }
 
 static void clear_frame(int frame_num) {
@@ -73,7 +73,7 @@ static void clear_frame(int frame_num) {
 
   frame_bitset[byte_num] &= mask;
 
-  TracePrintf(0, "Frame %#x is now free\n", frame_num);
+  TracePrintf(5, "Frame %#x is now free\n", frame_num);
 
 }
 

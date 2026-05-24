@@ -222,7 +222,7 @@ static bool resize_heap(int size) {
     pcb->next = NULL;
     queues[type].length++;
 
-    TracePrintf(0,
+    TracePrintf(3,
                 "Enqued pcb with pid %d to queue number %d\nSize is now %d\nFirst in line is %d\n",
                 pcb->pid, type, queues[type].length, queues[type].first->pid);
   }

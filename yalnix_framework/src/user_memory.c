@@ -17,9 +17,9 @@ static void destroy_pt(pte_t *pt, int first, int last);
 bool init_region1_pt(pcb_t *idle) {
   mem_ctx = &(idle->mem_ctx);
 
-  TracePrintf(0, "Starting region 1 pt initialization\n");
+  TracePrintf(2, "Starting region 1 pt initialization\n");
 
-  TracePrintf(0, "Writing region1 page table to register\n");
+  TracePrintf(2, "Writing region1 page table to register\n");
 
   WriteRegister(REG_PTBR1, (unsigned int)(long)mem_ctx->region1_pt);
   WriteRegister(REG_PTLR1, REGION1_VPNS);
@@ -39,7 +39,7 @@ int KernelBrk_Impl(void *addr, void *sp) {
   int stack_page = DOWN_TO_PAGE(sp) >> PAGESHIFT;
   int curr_brk_page = mem_ctx->curr_brk_page;
 
-  TracePrintf(0,
+  TracePrintf(3,
               "Setting User Brk with,\n heap_page=%d\n stack_page=%d\n "
               "original_brk=%d\n",
               heap_page, stack_page, curr_brk_page);

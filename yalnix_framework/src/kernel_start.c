@@ -21,7 +21,7 @@ static void do_idle(void) {
 }
 
 static void set_up_uc(UserContext *uc, void (*idle_func)(void), void *sp) {
-  uc->pc = idle_func;
+  uc->pc = (void *) idle_func;
   uc->sp = sp;
 }
 
