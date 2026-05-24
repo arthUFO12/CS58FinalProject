@@ -3,10 +3,9 @@
  * @brief Handles context switching and responding to traps
  */
 #include "hardware.h"
+#include "syscalls.h"
 #include "yalnix.h"
 #include "ylib.h"
-#include "yalnix.h"
-#include "syscalls.h"
 
 #include "interrupt.h"
 #include "kernel_memory.h"
@@ -16,12 +15,11 @@
 
 static void *interrupt_vector[TRAP_VECTOR_SIZE];
 
-void FullContextSwitch(UserContext *uc_in, pcb_t *curr_proc, pcb_t *next_proc) {
-  UCSwitch(uc_in, curr_proc, next_proc);
+void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
+  UCSwitch(next_proc);
   set_running_proc(next_proc);
 
-  TracePrintf(0, "Switching to process %d to process %d\n", (curr_proc != NULL) ? curr_proc->pid : -1,
-              next_proc->pid);
+  TracePrintf(0, "Switching to process %d to process %d\n", (curr_proc != NULL) ? curr_proc->pid : -1, next_proc->pid);
   int success = KernelContextSwitch(KCSwitch, curr_proc, next_proc);
 
   if (success == ERROR) {
@@ -35,7 +33,7 @@ void FullContextSwitch(UserContext *uc_in, pcb_t *curr_proc, pcb_t *next_proc) {
 static void trap_kernel_handler(UserContext *uc) {
   TracePrintf(1, "A trap kernel with code %x\n", uc->code);
 
-  unsigned int code = (unsigned int) uc->code;
+  unsigned int code = (unsigned int)uc->code;
   pcb_t *curr_proc = get_running_proc();
 
   memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
@@ -69,7 +67,6 @@ static void trap_clock_handler(UserContext *uc) {
   wake_sleepers();
   increment_ticks();
   TracePrintf(1, "A trap clock occurred. \n");
-
 
   pcb_t *curr_proc = get_running_proc();
 

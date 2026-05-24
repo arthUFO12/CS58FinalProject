@@ -10,15 +10,14 @@
 #include "hardware.h"
 #include "interrupt.h"
 #include "kernel_memory.h"
+#include "load_program.h"
 #include "scheduler.h"
 #include "syscalls.h"
 #include "user_memory.h"
 
 void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
 
-void KernelBrk(UserContext *uc) {
-  uc->regs[0] = KernelBrk_Impl((void*) uc->regs[0], uc->sp);
-}
+void KernelBrk(UserContext *uc) { uc->regs[0] = KernelBrk_Impl((void *)uc->regs[0], uc->sp); }
 
 void KernelDelay(UserContext *uc) {
   int clock_ticks = uc->regs[0];
@@ -42,10 +41,11 @@ void KernelDelay(UserContext *uc) {
 void KernelExit(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
 
-  if (running_proc->pid == 1) Halt();
+  if (running_proc->pid == 1)
+    Halt();
   pcb_t *new_proc = get_next_process();
 
-  running_proc->exit_code = (uc == NULL) ? -1 : (int) uc->regs[0];
+  running_proc->exit_code = (uc == NULL) ? -1 : (int)uc->regs[0];
   running_proc->state = EXITED;
 
   deallocate_region1();
@@ -93,7 +93,7 @@ void KernelFork(UserContext *uc) {
 
 void KernelWait(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
-  if (!find_exited_child(running_proc, (int*) uc->regs[0])) {
+  if (!find_exited_child(running_proc, (int *)uc->regs[0])) {
     wait_block_process(running_proc);
 
     pcb_t *new_proc = get_next_process();

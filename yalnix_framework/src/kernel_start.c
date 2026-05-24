@@ -4,6 +4,7 @@
  */
 
 #include "hardware.h"
+#include "ykernel.h"
 #include "ylib.h"
 
 #include "frame_tracking.h"
