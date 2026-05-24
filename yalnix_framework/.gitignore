@@ -1,0 +1,12 @@
+.vscode
+.idea
+
+include
+sample
+lib
+etc
+
+*.o
+yalnix
+
+
