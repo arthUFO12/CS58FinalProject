@@ -16,3 +16,8 @@ make
 
 The program prints all messages from the `Brk` and `GetPid` syscalls as expected and also waits the desired amount of clock ticks
 after each `Delay` call.
+
+To test that `idle` and `init` bounce back and forth correctly, run
+```bash
+./yalnix user/while1
+```
