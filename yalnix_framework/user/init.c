@@ -8,6 +8,8 @@ int main(int argc, char* argv[]) {
   *var = 0;
 
   TracePrintf(0, "Pid: %d\n", GetPid());
+
+  Brk((void*) (0x100000 + 10 * 0x2000));
   while (1) {
     (*var)++;
     
