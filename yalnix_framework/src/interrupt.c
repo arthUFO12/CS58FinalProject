@@ -5,6 +5,8 @@
 #include "hardware.h"
 #include "yalnix.h"
 #include "ylib.h"
+#include "yalnix.h"
+#include "syscalls.h"
 
 #include "interrupt.h"
 #include "kernel_memory.h"
@@ -18,7 +20,8 @@ void FullContextSwitch(UserContext *uc_in, pcb_t *curr_proc, pcb_t *next_proc) {
   UCSwitch(uc_in, curr_proc, next_proc);
   set_running_proc(next_proc);
 
-  TracePrintf(0, "Switching to process %d to process %d\n", curr_proc->pid, next_proc->pid);
+  TracePrintf(0, "Switching to process %d to process %d\n", (curr_proc != NULL) ? curr_proc->pid : -1,
+              next_proc->pid);
   int success = KernelContextSwitch(KCSwitch, curr_proc, next_proc);
 
   if (success == ERROR) {
@@ -30,64 +33,53 @@ void FullContextSwitch(UserContext *uc_in, pcb_t *curr_proc, pcb_t *next_proc) {
 
 /* Trap Handlers */
 static void trap_kernel_handler(UserContext *uc) {
-  int syscall = uc->code;
+  TracePrintf(1, "A trap kernel with code %x\n", uc->code);
 
-  TracePrintf(1, "A trap kernel with code %x\n", syscall);
-
-  switch (syscall) {
-
-  case YALNIX_FORK:
-    KernelFork(uc);
-    break;
-
-  case YALNIX_EXEC:
-    KernelExec(uc);
-    break;
-
-  case YALNIX_EXIT:
-    KernelExit(uc);
-    break;
-
-  case YALNIX_WAIT:
-    KernelWait(uc);
-    break;
-
-  case YALNIX_GETPID:
-    KernelGetPid(uc);
-    break;
-
-  case YALNIX_BRK:
-    KernelBrk(uc);
-    break;
-
-  case YALNIX_DELAY:
-    KernelDelay(uc);
-    break;
-
-  case YALNIX_TTY_READ:
-    KernelTtyRead(uc);
-    break;
-
-  case YALNIX_TTY_WRITE:
-    KernelTtyWrite(uc);
-    break;
-
-  default:
-    TracePrintf(0, "Illegal syscall %x", syscall);
-  }
-}
-
-static void trap_clock_handler(UserContext *uc) {
-  increment_ticks();
-  TracePrintf(1, "A trap clock occurred. \n");
-
+  unsigned int code = (unsigned int) uc->code;
   pcb_t *curr_proc = get_running_proc();
-  pcb_t *next_proc = run_diff_process(curr_proc);
 
   memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
 
+  if (code == YALNIX_GETPID) {
+    KernelGetPid(&(curr_proc->uc));
+  } else if (code == YALNIX_BRK) {
+    KernelBrk(&(curr_proc->uc));
+  } else if (code == YALNIX_DELAY) {
+    KernelDelay(&(curr_proc->uc));
+  } else if (code == YALNIX_EXIT) {
+    KernelExit(&(curr_proc->uc));
+  } else if (code == YALNIX_FORK) {
+    KernelFork(&(curr_proc->uc));
+  } else if (code == YALNIX_EXEC) {
+    KernelExec(&(curr_proc->uc));
+  } else if (code == YALNIX_WAIT) {
+    KernelWait(&(curr_proc->uc));
+  } else {
+    TracePrintf(1, "Syscall not implemented\n");
+    TracePrintf(1, "Address %p\n", uc->addr);
+  }
+
+  curr_proc = get_running_proc();
+
+  memcpy(uc, &(curr_proc->uc), sizeof(UserContext));
+}
+
+static void trap_clock_handler(UserContext *uc) {
+  wake_waiters();
+  wake_sleepers();
+  increment_ticks();
+  TracePrintf(1, "A trap clock occurred. \n");
+
+
+  pcb_t *curr_proc = get_running_proc();
+
+  memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
+  schedule_process(curr_proc);
+
+  pcb_t *next_proc = get_next_process();
+
   if (curr_proc != next_proc) {
-    FullContextSwitch(uc, curr_proc, next_proc);
+    FullContextSwitch(curr_proc, next_proc);
   }
 
   curr_proc = get_running_proc();

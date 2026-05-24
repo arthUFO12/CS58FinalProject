@@ -16,7 +16,9 @@
 
 void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
 
-void KernelBrk(UserContext *uc) { uc->regs[0] = KernelBrk_Impl(uc->addr, uc->sp); }
+void KernelBrk(UserContext *uc) {
+  uc->regs[0] = KernelBrk_Impl((void*) uc->regs[0], uc->sp);
+}
 
 void KernelDelay(UserContext *uc) {
   int clock_ticks = uc->regs[0];
@@ -24,92 +26,77 @@ void KernelDelay(UserContext *uc) {
 
   if (clock_ticks <= 0) {
     uc->regs[0] = (clock_ticks == 0) ? 0 : ERROR;
+    return;
   }
 
-  pcb_t *new_proc = put_to_sleep(running_proc, clock_ticks);
-
-  if (new_proc != running_proc) {
+  if (put_to_sleep(running_proc, clock_ticks)) {
     uc->regs[0] = 0;
-    FullContextSwitch(uc, running_proc, new_proc);
+
+    pcb_t *new_proc = get_next_process();
+    FullContextSwitch(running_proc, new_proc);
   } else {
     uc->regs[0] = ERROR;
   }
 }
 
-void KernelFork(UserContext *uc) {
+void KernelExit(UserContext *uc) {
+  pcb_t *running_proc = get_running_proc();
 
-  pcb_t *parent_pcb = get_running_proc();
+  if (running_proc->pid == 1) Halt();
+  pcb_t *new_proc = get_next_process();
 
-  pcb_t *child_pcb = create_new_pcb(NUM_K_STACK_VPNS, REGION1_VPNS, uc);
+  running_proc->exit_code = (uc == NULL) ? -1 : (int) uc->regs[0];
+  running_proc->state = EXITED;
 
-  // copy usercontext, duplicate page table, copy pages
-  UCCopy(&(parent_pcb->uc), child_pcb, NULL);
+  deallocate_region1();
+  deallocate_kernel_stack();
 
-  child_pcb->pid = helper_new_pid(child_pcb->mem_ctx.region1_pt);
-  child_pcb->state = READY;
+  retire_pcb(running_proc);
 
-  schedule_process(child_pcb);
-
-  // ucopy sets child_pcb->uc.regs[0] to 0 already
-  parent_pcb->uc.regs[0] = child_pcb->pid;
+  FullContextSwitch(NULL, new_proc);
 }
 
 void KernelExec(UserContext *uc) {
-  /*
-  get filename and args ( regs[0] and regs[1])
+  char *filename = (char *)uc->regs[0];
+  char **argvec = (char **)uc->regs[1];
+  pcb_t *running_proc = get_running_proc();
 
-  validate pointers in user memory
+  int res = LoadProgram(filename, argvec, running_proc);
 
-  LoadProgram()
-
-  */
+  if (res == KILL) {
+    KernelExit(NULL);
+  } else if (res == ERROR) {
+    uc->regs[0] = ERROR;
+  }
 }
 
-void KernelExit(UserContext *uc) {
-  /*
-   current_pcb = get_running_proc();
+void KernelFork(UserContext *uc) {
+  pcb_t *running_proc = get_running_proc();
+  pcb_t *new_proc = create_new_pcb(K_STACK_VPNS, REGION1_VPNS, uc);
 
-   Set status to exit
+  if (!UCCopy(uc, new_proc)) {
+    uc->regs[0] = ERROR;
+    retire_pcb(new_proc);
+    free(new_proc);
+    return;
+  }
 
-   wake parent if necessary
+  uc->regs[0] = new_proc->pid;
+  new_proc->uc.regs[0] = 0;
 
-   undo_allocation()
+  add_child_proc(running_proc, new_proc);
 
-   mark as zombie
+  schedule_process(new_proc);
 
-   next = run_diff_process(current)
-
-   FillContextSwitch(uc, current, next);
-   */
+  KernelContextSwitch(KCCopy, new_proc, NULL);
 }
 
 void KernelWait(UserContext *uc) {
-  /*
-  parent_pcb = get_running_proc();
+  pcb_t *running_proc = get_running_proc();
+  if (!find_exited_child(running_proc, (int*) uc->regs[0])) {
+    wait_block_process(running_proc);
 
-  Check if no children exist: return error
-
-  If zombie exists reap: return pid
-
-  Block parent
-
-  */
-}
-
-void KernelTtyRead(UserContext *uc) {
-  /*
-    If no data: block
-
-    Copy data into user buffer
-    */
-}
-
-void KernelTtyWrite(UserContext *uc) {
-  /*
-  Queue write request
-
-  If tty idle: start transmit
-
-  Block until transmit ends
-  */
+    pcb_t *new_proc = get_next_process();
+    FullContextSwitch(running_proc, new_proc);
+  }
 }

@@ -76,7 +76,7 @@ static void set_frame(int frame_num) {
 
   frame_bitset[byte_num] |= mask;
 
-  TracePrintf(0, "Frame 0x%x is now allocated\n", frame_num);
+  TracePrintf(0, "Frame %#x is now in use\n", frame_num);
 }
 
 static void clear_frame(int frame_num) {
@@ -86,7 +86,8 @@ static void clear_frame(int frame_num) {
 
   frame_bitset[byte_num] &= mask;
 
-  TracePrintf(0, "Frame 0x%3x is now deallocated\n", frame_num);
+  TracePrintf(0, "Frame %#x is now free\n", frame_num);
+
 }
 
 int find_frame(void) {

@@ -3,16 +3,30 @@
 #include "hardware.h"
 #include "pcb.h"
 
+#ifndef REGION0_VPNS
+#define REGION0_VPNS (VMEM_0_SIZE >> PAGESHIFT)
+#endif
+
+#ifndef REGION1_VPNS
+#define REGION1_VPNS (VMEM_1_SIZE >> PAGESHIFT)
+#endif
+
+#define REGION1_BASE_VPN REGION0_VPNS
+#define REGION1_LIMIT_VPN (REGION1_BASE_VPN + REGION1_VPNS)
+
 int KernelBrk_Impl(void *addr, void *sp);
 
 bool init_region1_pt(pcb_t *idle);
 
-void UCSwitch(UserContext *uc_in, void *curr_pcb_p, void *next_pcb_p);
+void UCSwitch(pcb_t *next_pcb);
 
-UserContext *UCCopy(UserContext *uc_in, void *new_pcb_p, void *unused);
+bool UCCopy(UserContext *uc_in, pcb_t *new_pcb);
 
-void undo_allocation(int first_vpn, int last_vpn);
+void deallocate_region1(void);
 
 bool alloc_region(int start_vpn, int end_vpn, int prot);
 
 void prot_region(int start_vpn, int end_vpn, int prot);
+
+
+
