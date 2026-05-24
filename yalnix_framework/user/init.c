@@ -32,6 +32,8 @@ int main(int argc, char *argv[]) {
     Wait(&status);
     TracePrintf(0, "Proc finished with exit code %d\n", status);
   }
+
+  while (1) {
     TracePrintf(0, "I'm in userland!!!\n");
     Pause();
   }
