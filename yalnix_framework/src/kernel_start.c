@@ -1,15 +1,16 @@
 
-#include "frame_tracking.h"
 #include "hardware.h"
+#include "ykernel.h"
+#include "ylib.h"
+
+#include "frame_tracking.h"
 #include "interrupt.h"
 #include "kernel_memory.h"
 #include "load_program.h"
 #include "pcb.h"
 #include "scheduler.h"
+#include "tty.h"
 #include "user_memory.h"
-#include "ykernel.h"
-#include "ylib.h"
-#include <assert.h>
 
 /*
  * Kernel startup and bootstrap logic.
@@ -50,6 +51,7 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   init_region1_pt(idle_pcb);
 
   init_scheduler(idle_pcb);
+  init_tty();
   schedule_process(init_pcb);
 
   enable_vm();

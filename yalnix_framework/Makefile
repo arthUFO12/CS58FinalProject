@@ -13,15 +13,15 @@ K_SRC_DIR = ./src
 K_INC_DIR = ./headers
 
 # What are the kernel c and include files? 
-K_SRCS = frame_tracking.c pcb.c scheduler.c syscalls.c interrupt.c user_memory.c load_program.c kernel_memory.c kernel_start.c
-K_INCS = bool.h interrupt.h scheduler.h syscalls.h frame_tracking.h pcb.h load_program.h kernel_memory.h user_memory.h
+K_SRCS = frame_tracking.c pcb.c scheduler.c syscalls.c interrupt.c user_memory.c load_program.c kernel_memory.c kernel_start.c tty.c
+K_INCS = bool.h interrupt.h scheduler.h syscalls.h frame_tracking.h pcb.h load_program.h kernel_memory.h user_memory.h tty.h
 
 
 # Where's your user source?
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c test.c
+U_SRCS = init.c test.c echo.c
 U_INCS =  
 
 

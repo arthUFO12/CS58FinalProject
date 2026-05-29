@@ -9,5 +9,5 @@ void KernelWait(UserContext *uc);
 void KernelExit(UserContext *uc);
 void KernelExec(UserContext *uc);
 void KernelFork(UserContext *uc);
-
-
+void KernelTtyRead(UserContext *uc);
+void KernelTtyWrite(UserContext *uc);
