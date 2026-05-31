@@ -35,7 +35,8 @@ struct pcb {
   enum process_state state;
   rel_t relations;    /* Parent/child tracking information. */
   int exit_code;      /* Exit code returned by the process. */
-
+  
+  int cvar_lock_id;
   int wake_up;        /* Clock tick when a sleeping process should resume. */
   int brk_page;       /* Process heap boundary page, if applicable. */
   pcb_t *next;        /* Next PCB in scheduler or wait queues. */

@@ -95,6 +95,38 @@ static void trap_kernel_handler(UserContext *uc) {
       KernelWait(&(curr_proc->uc));
       break;
 
+    case YALNIX_LOCK_INIT:
+      KernelLockInit(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_INIT:
+      KernelCvarInit(&(curr_proc->uc));
+      break;
+
+    case YALNIX_LOCK_ACQUIRE:
+      KernelAcquire(&(curr_proc->uc));
+      break;
+
+    case YALNIX_LOCK_RELEASE:
+      KernelRelease(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_SIGNAL:
+      KernelCvarSignal(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_BROADCAST:
+      KernelCvarBroadcast(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_WAIT:
+      KernelCvarWait(&(curr_proc->uc));
+      break;
+
+    case YALNIX_RECLAIM:
+      KernelReclaim(&(curr_proc->uc));
+      break;
+
     default:
       TracePrintf(0, "Syscall not implemented\n");
       TracePrintf(0, "Address %p\n", uc->addr);

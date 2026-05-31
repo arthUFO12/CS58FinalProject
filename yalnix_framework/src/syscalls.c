@@ -7,6 +7,7 @@
 #include "user_memory.h"
 #include "ykernel.h"
 #include "ylib.h"
+#include "synchronization.h"
 
 /* Return the PID of the currently running process. */
 void KernelGetPid(UserContext *uc) {
@@ -96,4 +97,36 @@ void KernelWait(UserContext *uc) {
     pcb_t *new_proc = get_next_process();
     FullContextSwitch(running_proc, new_proc);
   }
+}
+
+void KernelLockInit(UserContext* uc) {
+  LockInit_Impl(uc);
+}
+
+void KernelAcquire(UserContext *uc) {
+  Acquire_Impl(uc);
+}
+
+void KernelRelease(UserContext *uc) {
+  Release_Impl(uc);
+}
+
+void KernelCvarInit(UserContext *uc) {
+  CvarInit_Impl(uc);
+}
+
+void KernelCvarSignal(UserContext *uc) {
+  CvarSignal_Impl(uc);
+}
+
+void KernelCvarBroadcast(UserContext *uc) {
+  CvarBroadcast_Impl(uc);
+}
+
+void KernelCvarWait(UserContext *uc) {
+  CvarWait_Impl(uc);
+}
+
+void KernelReclaim(UserContext *uc) {
+  Reclaim_Impl(uc);
 }
