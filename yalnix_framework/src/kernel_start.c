@@ -9,6 +9,7 @@
 #include "user_memory.h"
 #include "ykernel.h"
 #include "ylib.h"
+#include "synchronization.h"
 #include <assert.h>
 
 /*
@@ -48,6 +49,8 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
 
   init_region0_pt(idle_pcb);
   init_region1_pt(idle_pcb);
+
+  init_sync();
 
   init_scheduler(idle_pcb);
   schedule_process(init_pcb);

@@ -1,6 +1,5 @@
 
 #include "synchronization.h"
-#include "bool.h"
 #include "pcb.h"
 #include "ylib.h"
 #include "identifiers.h"
@@ -89,6 +88,8 @@ void Release_Impl(UserContext* uc) {
 
   pcb_t* curr_proc = get_running_proc();
 
+  TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
+
   bool res = release(GET_ID(lock_id), curr_proc, false);
 
   if (res) {
@@ -113,11 +114,16 @@ void Acquire_Impl(UserContext* uc) {
 
   if (res == ERROR) {
     uc->regs[0] = ERROR;
+    TracePrintf(0, "Process %d tried to acquire but errored\n", curr_proc->pid);
   }
   else if (res == ACQUIRED) {
+    TracePrintf(0, "Process %d acquired and now has lock\n", curr_proc->pid);
+
     uc->regs[0] = SUCCESS;
   }
   else {
+    TracePrintf(0, "Process %d tried to acquire but couldn't. Waiting in queue\n", curr_proc->pid);
+
     uc->regs[0] = SUCCESS;
     pcb_t* next_proc = get_next_process();
 
@@ -404,8 +410,10 @@ static bool release(int lock_id, pcb_t* proc, bool cvar_use) {
 
   if (next == NULL) {
     locks[lock_id].acquired = false;
+    TracePrintf(0, "No other processes waiting on lock\n");
   }
   else {
+    TracePrintf(0, "Process %d now has lock. scheduling process\n", next->pid);
     locks[lock_id].acquired = true;
     locks[lock_id].pid = next->pid;
     schedule_process(next);

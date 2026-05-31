@@ -167,6 +167,7 @@ static void trap_clock_handler(UserContext *uc) {
 static void trap_not_implemented(UserContext *uc) {
   TracePrintf(0, "A trap that isn't implemented occurred\n");
   TracePrintf(0, "Addr: %#x, Maperr? %d, Accerr? %d\n", uc->addr, uc->code == YALNIX_MAPERR, uc->code == YALNIX_ACCERR);
+  Halt();
 }
 
 /* Terminate the process on a floating point or math exception. */
