@@ -27,6 +27,8 @@ static void do_idle(void) {
   }
 }
 
+
+
 static void set_up_uc(UserContext *uc, void (*idle_func)(void), void *sp) {
   uc->pc = (void *)idle_func;
   uc->sp = sp;
@@ -60,8 +62,11 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   KernelContextSwitch(KCCopy, init_pcb, NULL);
 
   pcb_t *curr_proc = get_running_proc();
+
+  char* init_name = cmd_args[0];
+
   if (curr_proc == init_pcb) {
-    if (LoadProgram(cmd_args[0], cmd_args + 1, curr_proc) != SUCCESS)
+    if (LoadProgram(init_name, cmd_args, curr_proc) != SUCCESS)
       Halt();
 
     memcpy(uctxt, &(curr_proc->uc), sizeof(UserContext));

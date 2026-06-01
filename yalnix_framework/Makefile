@@ -21,7 +21,7 @@ K_INCS = bool.h interrupt.h scheduler.h synchronization.h syscalls.h frame_track
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c test.c
+U_SRCS = init.c test.c test_helper.c 
 U_INCS =  
 
 
@@ -128,4 +128,4 @@ $(USER_APPS): $(USER_OBJS) $(USER_INCS)  $(USER_LIBS)
 
 
 user: build-dirs $(USER_OBJS)
-	$(CC) -o user/init $(USER_OBJS) -L$(YALNIX_FRAMEWORK)/lib -lyuser -static
+	$(CC) -o $(USER_OBJS) -L$(YALNIX_FRAMEWORK)/lib -lyuser -static

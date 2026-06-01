@@ -133,6 +133,7 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
   new_pcb->mem_ctx.txt_start_page = txt_page;
   new_pcb->mem_ctx.data_start_page = data_page;
   new_pcb->mem_ctx.curr_brk_page = brk_page;
+  new_pcb->mem_ctx.orig_brk_page = mem_ctx->orig_brk_page;
 
   memcpy(&(new_pcb->uc), uc_in, sizeof(UserContext));
   return true;
