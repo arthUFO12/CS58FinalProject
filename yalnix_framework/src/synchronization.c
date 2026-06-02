@@ -46,7 +46,7 @@ int open_cvar_idx = 0;
 int cvar_arr_size, lock_arr_size;
 
 static int new_cvar(void);
-static int new_lock(void);
+static int new_lock(int cap);
 static bool delete_lock(int lock_id);
 static bool delete_cvar(int cvar_id);
 

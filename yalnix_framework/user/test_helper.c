@@ -14,12 +14,11 @@ int main(int argc, char* argv[]) {
     Delay(3);
     Acquire(lock_id);
 
-    CvarSignal(cvar_id);
+    CvarBroadcast(cvar_id);
   }
   else {
     Acquire(lock_id);
     CvarWait(cvar_id, lock_id);
-    CvarSignal(cvar_id);
   }
   Release(lock_id);
 

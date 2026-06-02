@@ -21,7 +21,7 @@ K_INCS = bool.h interrupt.h scheduler.h synchronization.h syscalls.h frame_track
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = init.c test.c test_helper.c 
+U_SRCS = init.c test.c test2.c test_helper.c test_helper2.c forkstack.c
 U_INCS =  
 
 

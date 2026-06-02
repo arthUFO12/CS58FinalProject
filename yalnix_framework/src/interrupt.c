@@ -36,6 +36,7 @@ static void trap_kernel_handler(UserContext *uc);
 static void trap_clock_handler(UserContext *uc);
 static void trap_math_handler(UserContext *uc);
 static void trap_illegal_handler(UserContext *uc);
+static void trap_memory_handler(UserContext *uc);
 static void trap_not_implemented(UserContext *uc);
 
 
@@ -51,7 +52,7 @@ void init_interrupt_vector() {
   interrupt_vector[TRAP_CLOCK] = (void *)trap_clock_handler;
   interrupt_vector[TRAP_MATH] = (void *)trap_math_handler;
   interrupt_vector[TRAP_ILLEGAL] = (void *)trap_illegal_handler;
-
+  interrupt_vector[TRAP_MEMORY] = (void *)trap_memory_handler;
   WriteRegister(REG_VECTOR_BASE, (unsigned int)(long)interrupt_vector);
 }
 
@@ -192,4 +193,6 @@ static void trap_illegal_handler(UserContext *unused) {
   KernelExit(NULL);
 }
 
-
+static void trap_memory_handler(UserContext *uc) {
+  if (!expand_stack((int)(long) uc->addr)) KernelExit(NULL);
+}

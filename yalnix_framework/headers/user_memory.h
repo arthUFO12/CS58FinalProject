@@ -44,4 +44,6 @@ bool alloc_region(int start_vpn, int end_vpn, int prot);
 void prot_region(int start_vpn, int end_vpn, int prot);
 
 
+bool expand_stack(int sp);
+
 
