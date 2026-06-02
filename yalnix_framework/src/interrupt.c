@@ -1,11 +1,13 @@
 #include "interrupt.h"
 
+#include "hardware.h"
 #include "kernel_memory.h"
 #include "scheduler.h"
-#include "user_memory.h"
-#include "ylib.h"
-#include "yalnix.h"
 #include "syscalls.h"
+#include "tty.h"
+#include "user_memory.h"
+#include "yalnix.h"
+#include "ylib.h"
 
 /*
  * Interrupt and trap handling for the Yalnix kernel.
@@ -18,8 +20,7 @@ void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
   UCSwitch(next_proc);
   set_running_proc(next_proc);
 
-  TracePrintf(3, "Switching to process %d to process %d\n", (curr_proc != NULL) ? curr_proc->pid : -1,
-              next_proc->pid);
+  TracePrintf(3, "Switching to process %d to process %d\n", (curr_proc != NULL) ? curr_proc->pid : -1, next_proc->pid);
   int success = KernelContextSwitch(KCSwitch, curr_proc, next_proc);
 
   if (success == -1) {
@@ -31,19 +32,19 @@ void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
   }
 }
 
-
 static void trap_kernel_handler(UserContext *uc);
 static void trap_clock_handler(UserContext *uc);
 static void trap_math_handler(UserContext *uc);
 static void trap_illegal_handler(UserContext *uc);
 static void trap_memory_handler(UserContext *uc);
 static void trap_not_implemented(UserContext *uc);
-
+static void trap_tty_receive_handler(UserContext *ux);
+static void trap_tty_transmit_handler(UserContext *ux);
 
 static void *interrupt_vector[TRAP_VECTOR_SIZE];
 
 /* Initialize the hardware trap vector to dispatch kernel handlers. */
-void init_interrupt_vector() {
+void init_interrupt_vector(void) {
   for (int i = 0; i < TRAP_VECTOR_SIZE; i++) {
     interrupt_vector[i] = (void *)trap_not_implemented;
   }
@@ -52,17 +53,18 @@ void init_interrupt_vector() {
   interrupt_vector[TRAP_CLOCK] = (void *)trap_clock_handler;
   interrupt_vector[TRAP_MATH] = (void *)trap_math_handler;
   interrupt_vector[TRAP_ILLEGAL] = (void *)trap_illegal_handler;
+  interrupt_vector[TRAP_TTY_RECEIVE] = (void *)trap_tty_receive_handler;
+  interrupt_vector[TRAP_TTY_TRANSMIT] = (void *)trap_tty_transmit_handler;
+
   interrupt_vector[TRAP_MEMORY] = (void *)trap_memory_handler;
   WriteRegister(REG_VECTOR_BASE, (unsigned int)(long)interrupt_vector);
 }
-
-
 
 /* Dispatch a kernel trap to the appropriate syscall handler. */
 static void trap_kernel_handler(UserContext *uc) {
   TracePrintf(2, "A trap kernel with code %x\n", uc->code);
 
-  unsigned int code = (unsigned int) uc->code;
+  unsigned int code = (unsigned int)uc->code;
   pcb_t *curr_proc = get_running_proc();
 
   memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
@@ -94,6 +96,14 @@ static void trap_kernel_handler(UserContext *uc) {
 
     case YALNIX_WAIT:
       KernelWait(&(curr_proc->uc));
+      break;
+      
+    case YALNIX_TTY_READ:
+      KernelTtyRead(&(curr_proc->uc));
+      break;
+
+    case YALNIX_TTY_WRITE:
+      KernelTtyWrite(&(curr_proc->uc));
       break;
 
     case YALNIX_LOCK_INIT:
@@ -156,9 +166,8 @@ static void trap_clock_handler(UserContext *uc) {
   increment_ticks();
   wake_waiters();
   wake_sleepers();
-  
-  TracePrintf(2, "A trap clock occurred. \n");
 
+  TracePrintf(2, "A trap clock occurred. \n");
 
   pcb_t *curr_proc = get_running_proc();
 
@@ -184,13 +193,35 @@ static void trap_not_implemented(UserContext *uc) {
 }
 
 /* Terminate the process on a floating point or math exception. */
-static void trap_math_handler(UserContext *unused) {
-  KernelExit(NULL);
-}
+static void trap_math_handler(UserContext *unused) { KernelExit(NULL); }
 
 /* Terminate the process on an illegal instruction trap. */
-static void trap_illegal_handler(UserContext *unused) {
-  KernelExit(NULL);
+static void trap_illegal_handler(UserContext *unused) { KernelExit(NULL); }
+
+/* Terminal received line */
+static void trap_tty_receive_handler(UserContext *uc) {
+  int id = (int)uc->code;
+  pcb_t *curr = get_running_proc();
+
+  memcpy(&(curr->uc), uc, sizeof(UserContext));
+
+  tty_receive_done(id);
+
+  curr = get_running_proc();
+  memcpy(uc, &(curr->uc), sizeof(UserContext));
+}
+
+/*Terminal transmitted line */
+static void trap_tty_transmit_handler(UserContext *uc) {
+  int id = (int)uc->code;
+  pcb_t *curr = get_running_proc();
+
+  memcpy(&(curr->uc), uc, sizeof(UserContext));
+
+  tty_transmit_done(id);
+
+  curr = get_running_proc();
+  memcpy(uc, &(curr->uc), sizeof(UserContext));
 }
 
 static void trap_memory_handler(UserContext *uc) {

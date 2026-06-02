@@ -1,23 +1,21 @@
 #include "syscalls.h"
+#include "hardware.h"
 #include "interrupt.h"
 #include "kernel_memory.h"
 #include "load_program.h"
 #include "pcb.h"
 #include "scheduler.h"
+#include "tty.h"
 #include "user_memory.h"
 #include "ykernel.h"
 #include "ylib.h"
 #include "synchronization.h"
 
 /* Return the PID of the currently running process. */
-void KernelGetPid(UserContext *uc) {
-  uc->regs[0] = get_running_proc()->pid;
-}
+void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
 
 /* Adjust the heap break for the current process. */
-void KernelBrk(UserContext *uc) {
-  uc->regs[0] = KernelBrk_Impl((void *)uc->regs[0], uc->sp);
-}
+void KernelBrk(UserContext *uc) { uc->regs[0] = KernelBrk_Impl((void *)uc->regs[0], uc->sp); }
 
 /* Sleep the current process for a given number of clock ticks. */
 void KernelDelay(UserContext *uc) {
@@ -98,6 +96,11 @@ void KernelWait(UserContext *uc) {
     FullContextSwitch(running_proc, new_proc);
   }
 }
+
+/* Terminal */
+void KernelTtyRead(UserContext *uc) { kernel_tty_read(uc); }
+
+void KernelTtyWrite(UserContext *uc) { kernel_tty_write(uc); }
 
 void KernelLockInit(UserContext* uc) {
   LockInit_Impl(uc);

@@ -29,19 +29,26 @@ typedef struct {
 
 /* Process control block structure. */
 struct pcb {
-  KernelContext kc;   /* Kernel registers and stack context. */
-  UserContext uc;     /* User register state for this process. */
-  pid_t pid;          /* Unique process identifier. */
+  KernelContext kc; /* Kernel registers and stack context. */
+  UserContext uc;   /* User register state for this process. */
+  pid_t pid;        /* Unique process identifier. */
   enum process_state state;
-  rel_t relations;    /* Parent/child tracking information. */
-  int exit_code;      /* Exit code returned by the process. */
-  
+  rel_t relations; /* Parent/child tracking information. */
+  int exit_code;   /* Exit code returned by the process. */
+
+  int wake_up;       /* Clock tick when a sleeping process should resume. */
+  int brk_page;      /* Process heap boundary page, if applicable. */
+  pcb_t *next;       /* Next PCB in scheduler or wait queues. */
+  pte_t *ks_pt;      /* Kernel stack page table entries for this process. */
+  mem_ctx_t mem_ctx; /* User-space memory context for region 1. */
   int cvar_lock_id;
-  int wake_up;        /* Clock tick when a sleeping process should resume. */
-  int brk_page;       /* Process heap boundary page, if applicable. */
-  pcb_t *next;        /* Next PCB in scheduler or wait queues. */
-  pte_t *ks_pt;       /* Kernel stack page table entries for this process. */
-  mem_ctx_t mem_ctx;  /* User-space memory context for region 1. */
+
+  char *io_kbuf;     /* Region 0 buffer for pending write payload. */
+  void *io_user_buf; /* User pointer for pending read destination. */
+  int io_total;      /* Total bytes for current write request. */
+  int io_sent;       /* Bytes already submitted via TtyTransmit. */
+  int io_len;        /* Requested bytes for current read request. */
+  int io_tty_id;     /* Terminal id of pending I/O operation. */
 };
 
 /* Create a new process control block with reserved kernel stack and region 1 pages. */
@@ -55,6 +62,3 @@ bool find_exited_child(pcb_t *parent, int *output);
 
 /* Add a child PCB to a parent's child list. */
 bool add_child_proc(pcb_t *parent, pcb_t *child);
-
-
-
