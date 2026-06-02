@@ -80,7 +80,7 @@ bool expand_stack(int sp) {
   if (stack_page < mem_ctx->curr_brk_page + 1) return false;
 
   int vpn = stack_page;
-  while (vpn < REGION1_VPNS && !mem_ctx->region1_pt[vpn - REGION1_BASE_VPN].valid) {
+  while (vpn < REGION1_VPNS + REGION0_VPNS && !mem_ctx->region1_pt[vpn - REGION1_BASE_VPN].valid) {
     alloc_page(vpn, PROT_READ | PROT_WRITE);
     vpn++;
   }

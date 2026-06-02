@@ -150,11 +150,6 @@ int main(void)
     r = LockInit(&mutex);
     assert(r != ERROR);
 
-    TtyPrintf(0, "Enter 'go' to go:\n");
-    do {
-	TtyRead(0, buf, 100);
-    } while (buf[0] != 'g' || buf[1] != 'o');
-
     pid = Fork();
     if (pid == 0)
 	Bouncer(cvar, mutex);
