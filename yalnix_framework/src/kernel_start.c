@@ -11,6 +11,8 @@
 #include "scheduler.h"
 #include "tty.h"
 #include "user_memory.h"
+#include "synchronization.h"
+#include <assert.h>
 
 /*
  * Kernel startup and bootstrap logic.
@@ -26,6 +28,8 @@ static void do_idle(void) {
     Pause();
   }
 }
+
+
 
 static void set_up_uc(UserContext *uc, void (*idle_func)(void), void *sp) {
   uc->pc = (void *)idle_func;
@@ -50,6 +54,8 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   init_region0_pt(idle_pcb);
   init_region1_pt(idle_pcb);
 
+  init_sync();
+
   init_scheduler(idle_pcb);
   init_tty();
   schedule_process(init_pcb);
@@ -59,8 +65,11 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   KernelContextSwitch(KCCopy, init_pcb, NULL);
 
   pcb_t *curr_proc = get_running_proc();
+
+  char* init_name = cmd_args[0];
+
   if (curr_proc == init_pcb) {
-    if (LoadProgram(cmd_args[0], cmd_args + 1, curr_proc) != SUCCESS)
+    if (LoadProgram(init_name, cmd_args, curr_proc) != SUCCESS)
       Halt();
 
     memcpy(uctxt, &(curr_proc->uc), sizeof(UserContext));

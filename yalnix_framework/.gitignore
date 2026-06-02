@@ -1,7 +1,6 @@
 .vscode
 .idea
 
-DISK
 
 include
 sample
@@ -11,4 +10,6 @@ etc
 *.o
 yalnix
 
+DISK
+**/PCB.h
 

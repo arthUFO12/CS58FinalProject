@@ -36,6 +36,7 @@ static void trap_kernel_handler(UserContext *uc);
 static void trap_clock_handler(UserContext *uc);
 static void trap_math_handler(UserContext *uc);
 static void trap_illegal_handler(UserContext *uc);
+static void trap_memory_handler(UserContext *uc);
 static void trap_not_implemented(UserContext *uc);
 static void trap_tty_receive_handler(UserContext *ux);
 static void trap_tty_transmit_handler(UserContext *ux);
@@ -55,6 +56,7 @@ void init_interrupt_vector(void) {
   interrupt_vector[TRAP_TTY_RECEIVE] = (void *)trap_tty_receive_handler;
   interrupt_vector[TRAP_TTY_TRANSMIT] = (void *)trap_tty_transmit_handler;
 
+  interrupt_vector[TRAP_MEMORY] = (void *)trap_memory_handler;
   WriteRegister(REG_VECTOR_BASE, (unsigned int)(long)interrupt_vector);
 }
 
@@ -68,46 +70,90 @@ static void trap_kernel_handler(UserContext *uc) {
   memcpy(&(curr_proc->uc), uc, sizeof(UserContext));
 
   switch (code) {
-  case YALNIX_GETPID:
-    KernelGetPid(&(curr_proc->uc));
-    break;
+    case YALNIX_GETPID:
+      KernelGetPid(&(curr_proc->uc));
+      break;
 
-  case YALNIX_BRK:
-    KernelBrk(&(curr_proc->uc));
-    break;
+    case YALNIX_BRK:
+      KernelBrk(&(curr_proc->uc));
+      break;
 
-  case YALNIX_DELAY:
-    KernelDelay(&(curr_proc->uc));
-    break;
+    case YALNIX_DELAY:
+      KernelDelay(&(curr_proc->uc));
+      break;
 
-  case YALNIX_EXIT:
-    KernelExit(&(curr_proc->uc));
-    break;
+    case YALNIX_EXIT:
+      KernelExit(&(curr_proc->uc));
+      break;
 
-  case YALNIX_FORK:
-    KernelFork(&(curr_proc->uc));
-    break;
+    case YALNIX_FORK:
+      KernelFork(&(curr_proc->uc));
+      break;
 
-  case YALNIX_EXEC:
-    KernelExec(&(curr_proc->uc));
-    break;
+    case YALNIX_EXEC:
+      KernelExec(&(curr_proc->uc));
+      break;
 
-  case YALNIX_WAIT:
-    KernelWait(&(curr_proc->uc));
-    break;
+    case YALNIX_WAIT:
+      KernelWait(&(curr_proc->uc));
+      break;
+      
+    case YALNIX_TTY_READ:
+      KernelTtyRead(&(curr_proc->uc));
+      break;
 
-  case YALNIX_TTY_READ:
-    KernelTtyRead(&(curr_proc->uc));
-    break;
+    case YALNIX_TTY_WRITE:
+      KernelTtyWrite(&(curr_proc->uc));
+      break;
 
-  case YALNIX_TTY_WRITE:
-    KernelTtyWrite(&(curr_proc->uc));
-    break;
+    case YALNIX_LOCK_INIT:
+      KernelLockInit(&(curr_proc->uc));
+      break;
 
-  default:
-    TracePrintf(0, "Syscall not implemented\n");
-    TracePrintf(0, "Address %p\n", uc->addr);
-    break;
+    case YALNIX_CVAR_INIT:
+      KernelCvarInit(&(curr_proc->uc));
+      break;
+
+    case YALNIX_LOCK_ACQUIRE:
+      KernelAcquire(&(curr_proc->uc));
+      break;
+
+    case YALNIX_LOCK_RELEASE:
+      KernelRelease(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_SIGNAL:
+      KernelCvarSignal(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_BROADCAST:
+      KernelCvarBroadcast(&(curr_proc->uc));
+      break;
+
+    case YALNIX_CVAR_WAIT:
+      KernelCvarWait(&(curr_proc->uc));
+      break;
+
+    case YALNIX_RECLAIM:
+      KernelReclaim(&(curr_proc->uc));
+      break;
+
+    case YALNIX_SEM_UP:
+      KernelSemUp(&(curr_proc->uc));
+      break;
+
+    case YALNIX_SEM_DOWN:
+      KernelSemDown(&(curr_proc->uc));
+      break;
+
+    case YALNIX_SEM_INIT:
+      KernelSemInit(&(curr_proc->uc));
+      break;
+
+    default:
+      TracePrintf(0, "Syscall not implemented\n");
+      TracePrintf(0, "Address %p\n", uc->addr);
+      break;
   }
 
   curr_proc = get_running_proc();
@@ -143,6 +189,7 @@ static void trap_clock_handler(UserContext *uc) {
 static void trap_not_implemented(UserContext *uc) {
   TracePrintf(0, "A trap that isn't implemented occurred\n");
   TracePrintf(0, "Addr: %#x, Maperr? %d, Accerr? %d\n", uc->addr, uc->code == YALNIX_MAPERR, uc->code == YALNIX_ACCERR);
+  Halt();
 }
 
 /* Terminate the process on a floating point or math exception. */
@@ -175,4 +222,8 @@ static void trap_tty_transmit_handler(UserContext *uc) {
 
   curr = get_running_proc();
   memcpy(uc, &(curr->uc), sizeof(UserContext));
+}
+
+static void trap_memory_handler(UserContext *uc) {
+  if (!expand_stack((int)(long) uc->addr)) KernelExit(NULL);
 }

@@ -11,3 +11,17 @@ void KernelExec(UserContext *uc);
 void KernelFork(UserContext *uc);
 void KernelTtyRead(UserContext *uc);
 void KernelTtyWrite(UserContext *uc);
+
+void KernelLockInit(UserContext* uc);
+void KernelAcquire(UserContext *uc);
+
+void KernelRelease(UserContext *uc);
+void KernelCvarInit(UserContext *uc);
+void KernelCvarSignal(UserContext *uc);
+void KernelCvarBroadcast(UserContext *uc);
+void KernelCvarWait(UserContext *uc);
+void KernelReclaim(UserContext *uc);
+void KernelSemUp(UserContext* uc);
+void KernelSemDown(UserContext* uc);
+void KernelSemInit(UserContext* uc);
+

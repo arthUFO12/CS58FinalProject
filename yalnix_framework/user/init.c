@@ -7,34 +7,25 @@
  * This program forks several children and waits for each to exit.
  */
 int main(int argc, char *argv[]) {
+  char** child_argv = argv + 1;
+  char* child_name = child_argv[0];
+
   int res;
-  char *argvec[2] = {NULL, NULL};
+  if ((res = Fork()) == 0) {
+    Exec(child_name, child_argv);
 
-  /* Spawn a few child processes, each executing user/test. */
-  for (int i = 0; i < 4; i++) {
-    if ((res = Fork()) == 0) {
-      argvec[0] = malloc(20 * sizeof(char));
-      sprintf(argvec[0], "child %d", i);
-      Exec("user/test", argvec);
-
-      TracePrintf(0, "Exec Failure. Exiting\n");
-      Exit(0);
-    } else if (res == -1) {
-      TracePrintf(0, "My fork failed\n");
-    } else {
-      TracePrintf(0, "Spawned child with pid %d\n", res);
-    }
+    Exit(-1);
   }
-
-  /* Wait for all children to finish before entering an idle loop. */
-  int status;
-  for (int i = 0; i < 4; i++) {
-    Wait(&status);
-    TracePrintf(0, "Proc finished with exit code %d\n", status);
+  else if (res != -1) {
+    TracePrintf(0, "Started the %s program!\n", child_name);
+  }
+  else {
+    TracePrintf(0, "Couldn't start %d program. Exiting init process\n", child_name);
+    Exit(-1);
   }
 
   while (1) {
     TracePrintf(0, "I'm in userland!!!\n");
-    Pause();
+    Wait(NULL);
   }
 }

@@ -41,6 +41,7 @@ struct pcb {
   pcb_t *next;       /* Next PCB in scheduler or wait queues. */
   pte_t *ks_pt;      /* Kernel stack page table entries for this process. */
   mem_ctx_t mem_ctx; /* User-space memory context for region 1. */
+  int cvar_lock_id;
 
   char *io_kbuf;     /* Region 0 buffer for pending write payload. */
   void *io_user_buf; /* User pointer for pending read destination. */

@@ -73,6 +73,20 @@ int KernelBrk_Impl(void *addr, void *sp) {
   return 0;
 }
 
+bool expand_stack(int sp) {
+  if (sp < VMEM_1_BASE || sp >= VMEM_1_LIMIT) return false;
+
+  int stack_page = DOWN_TO_PAGE(sp) >> PAGESHIFT;
+  if (stack_page < mem_ctx->curr_brk_page + 1) return false;
+
+  int vpn = stack_page;
+  while (vpn < REGION1_VPNS && !mem_ctx->region1_pt[vpn - REGION1_BASE_VPN].valid) {
+    alloc_page(vpn, PROT_READ | PROT_WRITE);
+    vpn++;
+  }
+  
+  return true;
+}
 /*
  * Copy the current process's user memory layout to a new PCB for fork.
  * The caller provides the user context to duplicate and the new child PCB.
@@ -133,6 +147,7 @@ bool UCCopy(UserContext *uc_in, pcb_t *new_pcb) {
   new_pcb->mem_ctx.txt_start_page = txt_page;
   new_pcb->mem_ctx.data_start_page = data_page;
   new_pcb->mem_ctx.curr_brk_page = brk_page;
+  new_pcb->mem_ctx.orig_brk_page = mem_ctx->orig_brk_page;
 
   memcpy(&(new_pcb->uc), uc_in, sizeof(UserContext));
   return true;
@@ -184,6 +199,7 @@ void deallocate_region1(void) {
 }
 
 static bool alloc_page(int vpn, int prot) {
+  
   vpn = vpn - REGION1_BASE_VPN;
   int pfn = find_frame();
   if (pfn == -1)

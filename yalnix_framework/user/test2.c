@@ -3,28 +3,23 @@
 
 
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
+  if (argc != 3) {
     Exit(-1);
   }
 
   int num_procs = atoi(argv[1]);
-  char one[] = "1";
-  char zero[] = "0";
-  char* child_argv[] = {"user/test_helper", NULL, NULL, one, NULL};
+  int sem_val = atoi(argv[2]);
 
-  int lock_id;
-  int cvar_id;
-  LockInit(&lock_id);
-  CvarInit(&cvar_id);
+  char* child_argv[] = {"user/test_helper2", NULL, NULL};
+
+  int sem_id;
+  SemInit(&sem_id, sem_val);
 
   child_argv[1] = calloc(100, sizeof(char));
-  child_argv[2] = calloc(100, sizeof(char));
-  sprintf(child_argv[1], "%d", lock_id);
-  sprintf(child_argv[2], "%d", cvar_id);
+  sprintf(child_argv[1], "%d", sem_id);
 
   int res;
   for (int i = 0; i < num_procs; i++) {
-    if (i > 0) child_argv[3] = zero;
     if ((res = Fork()) == 0) {
       Exec(child_argv[0], child_argv);
       Exit(-1);
@@ -37,8 +32,9 @@ int main(int argc, char *argv[]) {
 
   for (int i = 0; i < num_procs; i++) Wait(NULL);
 
-  TracePrintf(0, "All children finished. Reclaiming lock\n");
-  Reclaim(lock_id);
+  TracePrintf(0, "All children finished. Reclaiming sem\n");
+  Reclaim(sem_id);
 
   Exit(0);
+
 }
