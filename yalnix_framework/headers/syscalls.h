@@ -19,3 +19,7 @@ void KernelCvarSignal(UserContext *uc);
 void KernelCvarBroadcast(UserContext *uc);
 void KernelCvarWait(UserContext *uc);
 void KernelReclaim(UserContext *uc);
+void KernelSemUp(UserContext* uc);
+void KernelSemDown(UserContext* uc);
+void KernelSemInit(UserContext* uc);
+

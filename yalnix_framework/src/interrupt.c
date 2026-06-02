@@ -127,6 +127,18 @@ static void trap_kernel_handler(UserContext *uc) {
       KernelReclaim(&(curr_proc->uc));
       break;
 
+    case YALNIX_SEM_UP:
+      KernelSemUp(&(curr_proc->uc));
+      break;
+
+    case YALNIX_SEM_DOWN:
+      KernelSemDown(&(curr_proc->uc));
+      break;
+
+    case YALNIX_SEM_INIT:
+      KernelSemInit(&(curr_proc->uc));
+      break;
+
     default:
       TracePrintf(0, "Syscall not implemented\n");
       TracePrintf(0, "Address %p\n", uc->addr);

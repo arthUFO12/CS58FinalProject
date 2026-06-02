@@ -130,3 +130,15 @@ void KernelCvarWait(UserContext *uc) {
 void KernelReclaim(UserContext *uc) {
   Reclaim_Impl(uc);
 }
+
+void KernelSemInit(UserContext *uc) {
+  SemInit_Impl(uc);
+}
+
+void KernelSemUp(UserContext *uc) {
+  SemUp_Impl(uc);
+}
+
+void KernelSemDown(UserContext *uc) {
+  SemDown_Impl(uc);
+}

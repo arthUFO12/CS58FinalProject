@@ -21,11 +21,12 @@
 #define INITIAL_ARR_SIZE 10
 
 typedef struct {
-  bool acquired;
+  int capacity;
+  int val;
   bool in_use;
   pcb_t* first;
   pcb_t* last;
-  pid_t pid;
+  pid_t* pids;
   int needed_by;
 } lock_t;
 
@@ -58,6 +59,7 @@ static int acquire(int lock_id, pcb_t* proc, bool cvar_use);
 static bool wait_cvar(int cvar_id, int lock_id, pcb_t* proc);
 static bool signal_cvar(int cvar_id);
 static bool broadcast_cvar(int cvar_id);
+static bool find(pid_t *pids, pid_t p, int capacity, pid_t replace);
 
 bool init_sync(void) {
 
@@ -88,12 +90,12 @@ void Release_Impl(UserContext* uc) {
 
   pcb_t* curr_proc = get_running_proc();
 
-  TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
-
+  
   bool res = release(GET_ID(lock_id), curr_proc, false);
 
   if (res) {
     uc->regs[0] = SUCCESS;
+    TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
   }
   else {
     uc->regs[0] = ERROR;
@@ -131,6 +133,58 @@ void Acquire_Impl(UserContext* uc) {
   }
 }
 
+void SemDown_Impl(UserContext *uc) {
+  int sem_id = uc->regs[0];
+
+  if (!IS_SEM_ID(sem_id)) {
+    uc->regs[0] = ERROR;
+    return;
+  }
+
+  pcb_t* curr_proc = get_running_proc();
+
+  int res = acquire(GET_ID(sem_id), curr_proc, false);
+
+  if (res == ERROR) {
+    uc->regs[0] = ERROR;
+    TracePrintf(0, "Process %d tried to acquire semaphore but errored\n", curr_proc->pid);
+  }
+  else if (res == ACQUIRED) {
+    TracePrintf(0, "Process %d acquired and now has sem\n", curr_proc->pid);
+
+    uc->regs[0] = SUCCESS;
+  }
+  else {
+    TracePrintf(0, "Process %d tried to acquire sem but couldn't. Waiting in queue\n", curr_proc->pid);
+
+    uc->regs[0] = SUCCESS;
+    pcb_t* next_proc = get_next_process();
+
+    FullContextSwitch(curr_proc, next_proc);
+  }
+}
+
+void SemUp_Impl(UserContext * uc) {
+  int sem_id = uc->regs[0];
+
+  if (!IS_SEM_ID(sem_id)) {
+    uc->regs[0] = ERROR;
+    return;
+  }
+
+  pcb_t* curr_proc = get_running_proc();
+
+  bool res = release(GET_ID(sem_id), curr_proc, false);
+
+  if (res) {
+    uc->regs[0] = SUCCESS;
+    TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
+  }
+  else {
+    uc->regs[0] = ERROR;
+  }
+}
+
 void LockInit_Impl(UserContext *uc) {
   int* lock_idp = (int*) uc->regs[0];
 
@@ -139,7 +193,7 @@ void LockInit_Impl(UserContext *uc) {
     return;
   };
 
-  int lock_id = new_lock();
+  int lock_id = new_lock(1);
 
   if (lock_id == ERROR) {
     uc->regs[0] = ERROR;
@@ -147,6 +201,26 @@ void LockInit_Impl(UserContext *uc) {
   else {
     uc->regs[0] = SUCCESS;
     (*lock_idp) = CREATE_ID(LOCK_FLAG, lock_id);
+  }
+}
+
+void SemInit_Impl(UserContext *uc) {
+  int* sem_idp = (int*) uc->regs[0];
+  int cap = uc->regs[1];
+
+  if (sem_idp == NULL || cap < 1) {
+    uc->regs[0]= ERROR;
+    return;
+  }
+
+  int sem_id = new_lock(cap);
+
+  if (sem_id == ERROR) {
+    uc->regs[0] = ERROR;
+  }
+  else {
+    uc->regs[0] == SUCCESS;
+    (*sem_idp) = CREATE_ID(SEM_FLAG, sem_id);
   }
 }
 
@@ -222,7 +296,7 @@ void Reclaim_Impl(UserContext *uc) {
   int id = uc->regs[0];
   bool res = false;
 
-  if (IS_LOCK_ID(id)) {
+  if (IS_LOCK_ID(id) || IS_SEM_ID(id)) {
     res = delete_lock(GET_ID(id));
   }
   else if (IS_CVAR_ID(id)) {
@@ -286,7 +360,7 @@ static bool delete_cvar(int cvar_id) {
 }
 
 
-static int new_lock(void) {
+static int new_lock(int capacity) {
   if (open_lock_idx >= lock_arr_size) {
     int new_size = 2 * lock_arr_size;
     lock_t* temp = calloc(new_size, sizeof(lock_t));
@@ -302,8 +376,15 @@ static int new_lock(void) {
   int lock_id = open_lock_idx;
 
   memset(locks + lock_id, 0x00, sizeof(lock_t));
+  locks[lock_id].pids = calloc(capacity, sizeof(pid_t));
+
+  if (locks[lock_id].pids == NULL) return ERROR;
+
   locks[lock_id].in_use = true;
-  
+  locks[lock_id].capacity = capacity;
+  locks[lock_id].val = capacity;
+    
+
   while (open_lock_idx < lock_arr_size && locks[open_lock_idx].in_use) open_lock_idx++;
 
   return lock_id;
@@ -314,6 +395,7 @@ static bool delete_lock(int lock_id) {
   if (!locks[lock_id].in_use) return false;
   if (locks[lock_id].needed_by > 0) return false;
 
+  free(locks[lock_id].pids);
   locks[lock_id].in_use = false;
 
   if (lock_id < open_lock_idx) {
@@ -377,22 +459,31 @@ static bool broadcast_cvar(int cvar_id) {
   return true;
 }
 
+static bool find(pid_t *pids, pid_t p, int capacity, pid_t replace) {
+  for (int i = 0; i < capacity; i++) {
+    if (pids[i] == p) {
+      if (replace != -1) pids[i] = replace;
+      return true;
+    }
+  }
+  return false;
+}
+
 static int acquire(int lock_id, pcb_t* proc, bool cvar_use) {
   if (lock_id < 0 || lock_id >= lock_arr_size) return ERROR;
   if (!locks[lock_id].in_use) return ERROR;
+  if (find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, -1))
+    return ERROR;
 
-  if (!locks[lock_id].acquired) {
-    locks[lock_id].acquired = true;
-    locks[lock_id].pid = proc->pid;
+
+  if (locks[lock_id].val > 0) {
+    locks[lock_id].val--;
+    find(locks[lock_id].pids, 0, locks[lock_id].capacity, proc->pid);
     
     if (!cvar_use) locks[lock_id].needed_by++;
 
     return ACQUIRED;
-  }
-
-  if (locks[lock_id].pid == proc->pid)
-    return ERROR;
-  
+  }  
   
   insert(&(locks[lock_id].first), &(locks[lock_id].last), proc);
 
@@ -404,18 +495,18 @@ static int acquire(int lock_id, pcb_t* proc, bool cvar_use) {
 static bool release(int lock_id, pcb_t* proc, bool cvar_use) {
   if (lock_id < 0 || lock_id >= lock_arr_size) return false;
   if (!locks[lock_id].in_use) return false;
-  if (!locks[lock_id].acquired || locks[lock_id].pid != proc->pid) return false;
+  if (!find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, -1)) return false;
 
   pcb_t* next = pop(&(locks[lock_id].first), &(locks[lock_id].last));
 
   if (next == NULL) {
-    locks[lock_id].acquired = false;
+    locks[lock_id].val++;
+    find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, 0);
     TracePrintf(0, "No other processes waiting on lock\n");
   }
   else {
     TracePrintf(0, "Process %d now has lock. scheduling process\n", next->pid);
-    locks[lock_id].acquired = true;
-    locks[lock_id].pid = next->pid;
+    find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, next->pid);
     schedule_process(next);
   }
 

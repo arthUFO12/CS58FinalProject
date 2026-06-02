@@ -23,4 +23,10 @@ void CvarBroadcast_Impl(UserContext *uc);
 void Reclaim_Impl(UserContext *uc);
 
 
+void SemInit_Impl(UserContext *uc);
+
+void SemDown_Impl(UserContext *uc);
+
+void SemUp_Impl(UserContext *uc);
+
 
