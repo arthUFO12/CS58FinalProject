@@ -280,8 +280,8 @@ static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond) {
 
 /* Condition function for unblocking processes waiting for a child. */
 static bool wait_unblock_cond(pcb_t *pcb) {
-  int *status_p = &(pcb->uc.regs[1]);
-  return find_exited_child(pcb, status_p);
+  long unsigned int *status_p = &(pcb->uc.regs[1]);
+  return find_exited_child(pcb, (int*) status_p);
 }
 
 

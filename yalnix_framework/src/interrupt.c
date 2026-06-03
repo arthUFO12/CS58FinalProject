@@ -40,7 +40,6 @@ static void trap_clock_handler(UserContext *uc);
 static void trap_math_handler(UserContext *uc);
 static void trap_illegal_handler(UserContext *uc);
 static void trap_memory_handler(UserContext *uc);
-static void trap_not_implemented(UserContext *uc);
 static void trap_tty_receive_handler(UserContext *ux);
 static void trap_tty_transmit_handler(UserContext *ux);
 
@@ -185,12 +184,6 @@ static void trap_clock_handler(UserContext *uc) {
   memcpy(uc, &(curr_proc->uc), sizeof(UserContext));
 }
 
-/* Default handler for any trap code that has not been implemented. */
-static void trap_not_implemented(UserContext *uc) {
-  TracePrintf(0, "A trap that isn't implemented occurred\n");
-  TracePrintf(0, "Addr: %#x, Maperr? %d, Accerr? %d\n", uc->addr, uc->code == YALNIX_MAPERR, uc->code == YALNIX_ACCERR);
-  Halt();
-}
 
 /* Terminate the process on a floating point or math exception. */
 static void trap_math_handler(UserContext *unused) { KernelExit(NULL); }
