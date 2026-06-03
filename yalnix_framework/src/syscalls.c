@@ -90,11 +90,14 @@ void KernelFork(UserContext *uc) {
 /* Wait until one child process exits, blocking the current process if needed. */
 void KernelWait(UserContext *uc) {
   pcb_t *running_proc = get_running_proc();
+  
   if (!find_exited_child(running_proc, (int *)uc->regs[0])) {
     wait_block_process(running_proc);
     pcb_t *new_proc = get_next_process();
     FullContextSwitch(running_proc, new_proc);
+    if (uc->regs[0]) (*((int*) uc->regs[0])) = uc->regs[1];
   }
+  uc->regs[0] = 0;
 }
 
 /* Terminal */

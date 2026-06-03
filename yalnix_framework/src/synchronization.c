@@ -219,7 +219,7 @@ void SemInit_Impl(UserContext *uc) {
     uc->regs[0] = ERROR;
   }
   else {
-    uc->regs[0] == SUCCESS;
+    uc->regs[0] = SUCCESS;
     (*sem_idp) = CREATE_ID(SEM_FLAG, sem_id);
   }
 }

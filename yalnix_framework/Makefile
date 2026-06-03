@@ -21,7 +21,7 @@ K_INCS = bool.h interrupt.h scheduler.h synchronization.h syscalls.h frame_track
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = altinit.c init.c test.c test2.c test_helper.c test_helper2.c forkstack.c echo.c torture.c writer.c bigstack.c
+U_SRCS = altinit.c init.c test.c test2.c test_helper.c test_helper2.c forkstack.c echo.c torture.c writer.c bigstack.c illegal_addr.c
 U_INCS =  
 
 

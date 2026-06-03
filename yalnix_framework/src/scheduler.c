@@ -29,22 +29,20 @@ typedef struct {
   int length;
 } queue_t;
 
-typedef bool (*find_cond_t)(pcb_t *, void *);
+typedef bool (*find_cond_t)(pcb_t *);
 
 enum queue_type { MAIN_QUEUE, WAIT_BLOCKING_QUEUE, IO_BLOCKING_QUEUE };
 
 static queue_t queues[3];
 
 static pcb_t *deque_process(void);
-static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond,
-                                   void *arg);
+static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond);
 static void enque_process(enum queue_type type, pcb_t *pcb);
 static bool resize_heap(int size);
 static bool compare(pcb_t *a, pcb_t *b);
 static bool add_to_heap(pcb_t *p);
 static pcb_t *remove_from_heap(void);
-static bool io_unblock_cond(pcb_t *pcb, void *pid_p);
-static bool wait_unblock_cond(pcb_t *pcb, void *unused);
+static bool wait_unblock_cond(pcb_t *pcb);
 
 /* Return the currently running process. */
 pcb_t *get_running_proc(void) { return running_proc; }
@@ -87,8 +85,7 @@ void wake_sleepers(void) {
 void wake_waiters(void) {
   pcb_t *curr;
 
-  while ((curr = find_blocked_process(WAIT_BLOCKING_QUEUE, wait_unblock_cond,
-                                      NULL)) != NULL) {
+  while ((curr = find_blocked_process(WAIT_BLOCKING_QUEUE, wait_unblock_cond)) != NULL) {
     schedule_process(curr);
   }
 }
@@ -255,13 +252,12 @@ static pcb_t *deque_process(void) {
 }
 
 /* Find and remove a blocked process satisfying a condition. */
-static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond,
-                                   void *arg) {
+static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond) {
   pcb_t *prev = NULL;
   pcb_t *curr = queues[type].first;
 
   while (curr != NULL) {
-    if (cond(curr, arg)) {
+    if (cond(curr)) {
       if (prev == NULL) {
         queues[type].first = curr->next;
       } else {
@@ -282,15 +278,9 @@ static pcb_t *find_blocked_process(enum queue_type type, find_cond_t cond,
   return NULL;
 }
 
-/* Condition function for unblocking I/O waiters by PID. */
-static bool io_unblock_cond(pcb_t *pcb, void *pid_p) {
-  pid_t pid = *((pid_t *)pid_p);
-  return pcb->pid == pid;
-}
-
 /* Condition function for unblocking processes waiting for a child. */
-static bool wait_unblock_cond(pcb_t *pcb, void *unused) {
-  int *status_p = (int *)(pcb->uc.regs[0]);
+static bool wait_unblock_cond(pcb_t *pcb) {
+  int *status_p = &(pcb->uc.regs[1]);
   return find_exited_child(pcb, status_p);
 }
 

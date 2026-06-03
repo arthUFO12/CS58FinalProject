@@ -32,6 +32,9 @@ void FullContextSwitch(pcb_t *curr_proc, pcb_t *next_proc) {
   }
 }
 
+
+typedef void (*trap_handler_t)(UserContext *uc);
+
 static void trap_kernel_handler(UserContext *uc);
 static void trap_clock_handler(UserContext *uc);
 static void trap_math_handler(UserContext *uc);
@@ -41,22 +44,19 @@ static void trap_not_implemented(UserContext *uc);
 static void trap_tty_receive_handler(UserContext *ux);
 static void trap_tty_transmit_handler(UserContext *ux);
 
-static void *interrupt_vector[TRAP_VECTOR_SIZE];
+static trap_handler_t interrupt_vector[TRAP_VECTOR_SIZE];
 
 /* Initialize the hardware trap vector to dispatch kernel handlers. */
 void init_interrupt_vector(void) {
-  for (int i = 0; i < TRAP_VECTOR_SIZE; i++) {
-    interrupt_vector[i] = (void *)trap_not_implemented;
-  }
 
-  interrupt_vector[TRAP_KERNEL] = (void *)trap_kernel_handler;
-  interrupt_vector[TRAP_CLOCK] = (void *)trap_clock_handler;
-  interrupt_vector[TRAP_MATH] = (void *)trap_math_handler;
-  interrupt_vector[TRAP_ILLEGAL] = (void *)trap_illegal_handler;
-  interrupt_vector[TRAP_TTY_RECEIVE] = (void *)trap_tty_receive_handler;
-  interrupt_vector[TRAP_TTY_TRANSMIT] = (void *)trap_tty_transmit_handler;
+  interrupt_vector[TRAP_KERNEL] = trap_kernel_handler;
+  interrupt_vector[TRAP_CLOCK] = trap_clock_handler;
+  interrupt_vector[TRAP_MATH] = trap_math_handler;
+  interrupt_vector[TRAP_ILLEGAL] = trap_illegal_handler;
+  interrupt_vector[TRAP_TTY_RECEIVE] = trap_tty_receive_handler;
+  interrupt_vector[TRAP_TTY_TRANSMIT] = trap_tty_transmit_handler;
+  interrupt_vector[TRAP_MEMORY] = trap_memory_handler;
 
-  interrupt_vector[TRAP_MEMORY] = (void *)trap_memory_handler;
   WriteRegister(REG_VECTOR_BASE, (unsigned int)(long)interrupt_vector);
 }
 

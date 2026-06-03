@@ -7,6 +7,8 @@
  * This program forks several children and waits for each to exit.
  */
 int main(int argc, char *argv[]) {
+  if (argc < 2) Exit(-1);
+
   char** child_argv = argv + 1;
   char* child_name = child_argv[0];
 
@@ -24,8 +26,14 @@ int main(int argc, char *argv[]) {
     Exit(-1);
   }
 
+  int status = 40;
+
+
   while (1) {
     TracePrintf(0, "I'm in userland!!!\n");
-    Wait(NULL);
+    Wait(&status);
+    TracePrintf(0, "Status: %d\n", status);
+
+    if (status != 0) Exit(-1);
   }
 }
