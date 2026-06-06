@@ -22,6 +22,8 @@
 #define INITIAL_ARR_SIZE 10
 
 typedef struct {
+  // Represents both binary locks and counting semaphores.
+  // val tracks available permits and pids tracks current holders.
   int capacity;
   int val;
   bool in_use;
@@ -34,6 +36,7 @@ typedef struct {
 
 
 typedef struct {
+  // FIFO queue of processes waiting on this condition variable.
   pcb_t* first;
   pcb_t* last;
   bool in_use;
@@ -311,6 +314,7 @@ void Reclaim_Impl(UserContext *uc) {
 }
 
 static int new_cvar(void) {
+  // Grow the cvar table dynamically when it becomes full.
   if (open_cvar_idx >= cvar_arr_size) {
     int new_size = cvar_arr_size * 2;
     cvar_t* temp = calloc(new_size, sizeof(cvar_t));
@@ -365,6 +369,7 @@ static bool delete_cvar(int cvar_id) {
 
 
 static int new_lock(int capacity) {
+  // Grow the lock/semaphore table dynamically when it becomes full.
   if (open_lock_idx >= lock_arr_size) {
     int new_size = 2 * lock_arr_size;
     lock_t* temp = calloc(new_size, sizeof(lock_t));
@@ -430,6 +435,7 @@ static bool wait_cvar(int cvar_id, int lock_id, pcb_t* proc) {
   if (cvar_id < 0 || cvar_id >= cvar_arr_size) return false;
   if (!cvars[cvar_id].in_use) return false;
 
+  // Release the associated lock before sleeping on the condition.
   if (!release(lock_id, proc, true)) return false;
 
   proc->cvar_lock_id = lock_id;
@@ -441,6 +447,7 @@ static bool signal_cvar(int cvar_id) {
   if (cvar_id < 0 || cvar_id >= cvar_arr_size) return false;
   if (!cvars[cvar_id].in_use) return false;
 
+  // Wake a single waiter and attempt to reacquire its lock.
   pcb_t* next_proc = pop(&(cvars[cvar_id].first), &(cvars[cvar_id].last));
   
   if (next_proc != NULL) {
@@ -476,11 +483,13 @@ static bool find(pid_t *pids, pid_t p, int capacity, pid_t replace) {
 static int acquire(int lock_id, pcb_t* proc, bool cvar_use) {
   if (lock_id < 0 || lock_id >= lock_arr_size) return ERROR;
   if (!locks[lock_id].in_use) return ERROR;
+  // Locks are non-recursive; a process may not acquire twice.
   if (find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, -1))
     return ERROR;
 
 
   if (locks[lock_id].val > 0) {
+    // Permit available: acquire immediately.
     locks[lock_id].val--;
     find(locks[lock_id].pids, 0, locks[lock_id].capacity, proc->pid);
     
@@ -489,6 +498,7 @@ static int acquire(int lock_id, pcb_t* proc, bool cvar_use) {
     return ACQUIRED;
   }  
   
+  // No permit available; enqueue and block.
   insert(&(locks[lock_id].first), &(locks[lock_id].last), proc);
 
   if (!cvar_use) locks[lock_id].needed_by++;
@@ -501,6 +511,7 @@ static bool release(int lock_id, pcb_t* proc, bool cvar_use) {
   if (!locks[lock_id].in_use) return false;
   if (!find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, -1)) return false;
 
+  // Transfer ownership directly to the next waiting process if one exists.
   pcb_t* next = pop(&(locks[lock_id].first), &(locks[lock_id].last));
 
   if (next == NULL) {
