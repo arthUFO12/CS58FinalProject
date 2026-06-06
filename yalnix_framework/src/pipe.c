@@ -19,12 +19,15 @@
 
 typedef struct {
   bool in_use;
+
+  /* Circular buffer */
   char *buf;
   int cap;
   int head;
   int len;
-  pcb_t *read_head;
-  pcb_t *read_tail;
+
+  /* Blocked readers */
+  pcb_t *read_head, *read_tail;
 } pipe_t;
 
 static pipe_t *pipes;
@@ -39,6 +42,8 @@ static int read_bytes(pipe_t *pipe, char *buf, int len);
 static void readq_push(pipe_t *pipe, pcb_t *proc);
 static pcb_t *readq_pop(pipe_t *pipe);
 static void wake_readers(pipe_t *pipe);
+
+/* Pipe table initialization */
 
 bool init_pipes(void) {
   pipes = calloc(INITIAL_PIPE_COUNT, sizeof(pipe_t));
@@ -88,6 +93,7 @@ void PipeRead_Impl(UserContext *uc) {
     return;
   }
 
+  /* Block caller until data available */
   while (pipe->len == 0) {
     pcb_t *curr_proc = get_running_proc();
     readq_push(pipe, curr_proc);
@@ -126,13 +132,17 @@ void PipeWrite_Impl(UserContext *uc) {
     return;
   }
 
+  /* Append data and wake blocked readers */
   append_bytes(pipe, buf, len);
   wake_readers(pipe);
   uc->regs[0] = len;
 }
 
+/* Reclaim */
+
 bool pipe_reclaim(int pipe_id) {
   pipe_t *pipe = get_pipe(pipe_id);
+  /* Readers still blocked, cannot reclaim */
   if (pipe == NULL || pipe->read_head != NULL)
     return false;
 
@@ -145,6 +155,7 @@ bool pipe_reclaim(int pipe_id) {
 }
 
 static int new_pipe(void) {
+  /* Grow pipe table if full */
   if (open_pipe_idx >= pipes_size) {
     int new_size = pipes_size * 2;
     pipe_t *temp = calloc(new_size, sizeof(pipe_t));
@@ -173,12 +184,16 @@ static int new_pipe(void) {
   return pipe_id;
 }
 
+/* Internal helpers */
+
 static pipe_t *get_pipe(int pipe_id) {
   if (pipe_id < 0 || pipe_id >= pipes_size || !pipes[pipe_id].in_use)
     return NULL;
 
   return pipes + pipe_id;
 }
+
+/* Circular buffer operations */
 
 static bool ensure_capacity(pipe_t *pipe, int needed) {
   if (needed <= pipe->cap)
@@ -192,6 +207,7 @@ static bool ensure_capacity(pipe_t *pipe, int needed) {
   if (new_buf == NULL)
     return false;
 
+  /* Linearize circular data into new buffer */
   for (int i = 0; i < pipe->len; i++)
     new_buf[i] = pipe->buf[(pipe->head + i) % pipe->cap];
 
@@ -224,6 +240,8 @@ static int read_bytes(pipe_t *pipe, char *buf, int len) {
   return bytes;
 }
 
+/* Reader queue helpers */
+
 static void readq_push(pipe_t *pipe, pcb_t *proc) {
   proc->next = NULL;
   if (pipe->read_tail == NULL) {
@@ -248,6 +266,7 @@ static pcb_t *readq_pop(pipe_t *pipe) {
 }
 
 static void wake_readers(pipe_t *pipe) {
+  /* Move every blocked reader to ready queue */
   pcb_t *proc;
   while ((proc = readq_pop(pipe)) != NULL)
     schedule_process(proc);
