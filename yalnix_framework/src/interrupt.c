@@ -198,10 +198,16 @@ static void trap_clock_handler(UserContext *uc) {
 
 
 /* Terminate the process on a floating point or math exception. */
-static void trap_math_handler(UserContext *unused) { KernelExit(NULL); }
+static void trap_math_handler(UserContext *unused) {
+  (void)unused;
+  KernelExit(NULL);
+}
 
 /* Terminate the process on an illegal instruction trap. */
-static void trap_illegal_handler(UserContext *unused) { KernelExit(NULL); }
+static void trap_illegal_handler(UserContext *unused) {
+  (void)unused;
+  KernelExit(NULL);
+}
 
 /* Terminal received line */
 static void trap_tty_receive_handler(UserContext *uc) {
