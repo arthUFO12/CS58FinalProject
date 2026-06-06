@@ -13,15 +13,15 @@ K_SRC_DIR = ./src
 K_INC_DIR = ./headers
 
 # What are the kernel c and include files? 
-K_SRCS = frame_tracking.c pcb.c scheduler.c synchronization.c syscalls.c interrupt.c user_memory.c load_program.c kernel_memory.c kernel_start.c tty.c
-K_INCS = bool.h interrupt.h scheduler.h synchronization.h syscalls.h frame_tracking.h pcb.h load_program.h kernel_memory.h user_memory.h tty.h
+K_SRCS = frame_tracking.c pcb.c scheduler.c synchronization.c pipe.c syscalls.c interrupt.c user_memory.c load_program.c kernel_memory.c kernel_start.c tty.c
+K_INCS = bool.h interrupt.h scheduler.h synchronization.h pipe.h syscalls.h frame_tracking.h pcb.h load_program.h kernel_memory.h user_memory.h tty.h
 
 
 # Where's your user source?
 U_SRC_DIR = ./user
 
 # What are the user c and include files?
-U_SRCS = altinit.c init.c test.c test2.c test_helper.c test_helper2.c forkstack.c echo.c torture.c writer.c bigstack.c illegal_addr.c
+U_SRCS = altinit.c init.c test.c test2.c test_helper.c test_helper2.c forkstack.c echo.c torture.c writer.c bigstack.c illegal_addr.c pipe_test.c
 U_INCS =  
 
 
