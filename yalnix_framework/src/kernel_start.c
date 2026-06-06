@@ -12,6 +12,7 @@
 #include "tty.h"
 #include "user_memory.h"
 #include "synchronization.h"
+#include "pipe.h"
 #include <assert.h>
 
 /*
@@ -55,6 +56,7 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
   init_region1_pt(idle_pcb);
 
   init_sync();
+  init_pipes();
 
   init_scheduler(idle_pcb);
   init_tty();

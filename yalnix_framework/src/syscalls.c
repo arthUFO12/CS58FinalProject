@@ -10,6 +10,7 @@
 #include "ykernel.h"
 #include "ylib.h"
 #include "synchronization.h"
+#include "pipe.h"
 
 /* Return the PID of the currently running process. */
 void KernelGetPid(UserContext *uc) { uc->regs[0] = get_running_proc()->pid; }
@@ -147,4 +148,16 @@ void KernelSemUp(UserContext *uc) {
 
 void KernelSemDown(UserContext *uc) {
   SemDown_Impl(uc);
+}
+
+void KernelPipeInit(UserContext *uc) {
+  PipeInit_Impl(uc);
+}
+
+void KernelPipeRead(UserContext *uc) {
+  PipeRead_Impl(uc);
+}
+
+void KernelPipeWrite(UserContext *uc) {
+  PipeWrite_Impl(uc);
 }

@@ -5,6 +5,7 @@
 #include "identifiers.h"
 #include "scheduler.h"
 #include "interrupt.h"
+#include "pipe.h"
 
 #ifndef ERROR
 #define ERROR -1
@@ -298,6 +299,9 @@ void Reclaim_Impl(UserContext *uc) {
 
   if (IS_LOCK_ID(id) || IS_SEM_ID(id)) {
     res = delete_lock(GET_ID(id));
+  }
+  else if (IS_PIPE_ID(id)) {
+    res = pipe_reclaim(GET_ID(id));
   }
   else if (IS_CVAR_ID(id)) {
     res = delete_cvar(GET_ID(id));
