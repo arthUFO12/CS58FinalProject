@@ -96,7 +96,7 @@ void Release_Impl(UserContext* uc) {
 
   if (res) {
     uc->regs[0] = SUCCESS;
-    TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
+    TracePrintf(5, "Process %d successfully released\n", curr_proc->pid);
   }
   else {
     uc->regs[0] = ERROR;
@@ -117,15 +117,15 @@ void Acquire_Impl(UserContext* uc) {
 
   if (res == ERROR) {
     uc->regs[0] = ERROR;
-    TracePrintf(0, "Process %d tried to acquire but errored\n", curr_proc->pid);
+    TracePrintf(5, "Process %d tried to acquire but errored\n", curr_proc->pid);
   }
   else if (res == ACQUIRED) {
-    TracePrintf(0, "Process %d acquired and now has lock\n", curr_proc->pid);
+    TracePrintf(5, "Process %d acquired and now has lock\n", curr_proc->pid);
 
     uc->regs[0] = SUCCESS;
   }
   else {
-    TracePrintf(0, "Process %d tried to acquire but couldn't. Waiting in queue\n", curr_proc->pid);
+    TracePrintf(5, "Process %d tried to acquire but couldn't. Waiting in queue\n", curr_proc->pid);
 
     uc->regs[0] = SUCCESS;
     pcb_t* next_proc = get_next_process();
@@ -148,15 +148,15 @@ void SemDown_Impl(UserContext *uc) {
 
   if (res == ERROR) {
     uc->regs[0] = ERROR;
-    TracePrintf(0, "Process %d tried to acquire semaphore but errored\n", curr_proc->pid);
+    TracePrintf(5, "Process %d tried to acquire semaphore but errored\n", curr_proc->pid);
   }
   else if (res == ACQUIRED) {
-    TracePrintf(0, "Process %d acquired and now has sem\n", curr_proc->pid);
+    TracePrintf(5, "Process %d acquired and now has sem\n", curr_proc->pid);
 
     uc->regs[0] = SUCCESS;
   }
   else {
-    TracePrintf(0, "Process %d tried to acquire sem but couldn't. Waiting in queue\n", curr_proc->pid);
+    TracePrintf(5, "Process %d tried to acquire sem but couldn't. Waiting in queue\n", curr_proc->pid);
 
     uc->regs[0] = SUCCESS;
     pcb_t* next_proc = get_next_process();
@@ -179,7 +179,7 @@ void SemUp_Impl(UserContext * uc) {
 
   if (res) {
     uc->regs[0] = SUCCESS;
-    TracePrintf(0, "Process %d successfully released\n", curr_proc->pid);
+    TracePrintf(5, "Process %d successfully released\n", curr_proc->pid);
   }
   else {
     uc->regs[0] = ERROR;
@@ -506,10 +506,10 @@ static bool release(int lock_id, pcb_t* proc, bool cvar_use) {
   if (next == NULL) {
     locks[lock_id].val++;
     find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, 0);
-    TracePrintf(0, "No other processes waiting on lock\n");
+    TracePrintf(5, "No other processes waiting on lock\n");
   }
   else {
-    TracePrintf(0, "Process %d now has lock. scheduling process\n", next->pid);
+    TracePrintf(5, "Process %d now has lock. scheduling process\n", next->pid);
     find(locks[lock_id].pids, proc->pid, locks[lock_id].capacity, next->pid);
     schedule_process(next);
   }

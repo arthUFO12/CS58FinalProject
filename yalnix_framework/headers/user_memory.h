@@ -43,7 +43,9 @@ bool alloc_region(int start_vpn, int end_vpn, int prot);
 /* Change protection on a range of region 1 virtual pages. */
 void prot_region(int start_vpn, int end_vpn, int prot);
 
-
+/* expand the stack when a page fault occurs */
 bool expand_stack(int sp);
 
+/* check if a certain address has permissions to read and or write */
+bool has_perms(int addr, bool needs_write); 
 

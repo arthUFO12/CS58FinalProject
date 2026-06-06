@@ -73,6 +73,19 @@ int KernelBrk_Impl(void *addr, void *sp) {
   return 0;
 }
 
+/* checks if a process has the permissions to write at an address */
+bool has_perms(int addr, bool needs_write) {
+  if (addr < VMEM_1_BASE || addr >= VMEM_1_LIMIT) return false;
+  int addr_page = DOWN_TO_PAGE(addr) >> PAGESHIFT;
+
+  if (!mem_ctx->region1_pt[addr_page - REGION1_BASE_VPN].valid) return false;
+  int prot = mem_ctx->region1_pt[addr_page - REGION1_BASE_VPN].prot;
+
+  return (prot & PROT_READ) && (!needs_write || (prot & PROT_WRITE));
+}
+
+/* function for determining if page fault is because of stack expansion
+ * or bug and allocating pages accordingly */
 bool expand_stack(int sp) {
   if (sp < VMEM_1_BASE || sp >= VMEM_1_LIMIT) return false;
 
@@ -80,7 +93,7 @@ bool expand_stack(int sp) {
   if (stack_page < mem_ctx->curr_brk_page + 1) return false;
 
   int vpn = stack_page;
-  while (vpn < REGION1_VPNS + REGION0_VPNS && !mem_ctx->region1_pt[vpn - REGION1_BASE_VPN].valid) {
+  while (vpn < REGION1_LIMIT_VPN && !mem_ctx->region1_pt[vpn - REGION1_BASE_VPN].valid) {
     alloc_page(vpn, PROT_READ | PROT_WRITE);
     vpn++;
   }
@@ -173,7 +186,7 @@ bool alloc_region(int start_vpn, int end_vpn, int prot) {
 /* Change protection bits for a range of region 1 pages. */
 void prot_region(int start_vpn, int end_vpn, int prot) {
   if (start_vpn < REGION1_BASE_VPN ||
-      end_vpn > REGION1_BASE_VPN + REGION1_VPNS) {
+      end_vpn > REGION1_LIMIT_VPN) {
     return;
   }
 
