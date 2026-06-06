@@ -8,11 +8,11 @@
 #include "kernel_memory.h"
 #include "load_program.h"
 #include "pcb.h"
+#include "pipe.h"
 #include "scheduler.h"
+#include "synchronization.h"
 #include "tty.h"
 #include "user_memory.h"
-#include "synchronization.h"
-#include "pipe.h"
 #include <assert.h>
 
 /*
@@ -30,10 +30,8 @@ static void do_idle(void) {
   }
 }
 
-
-
 static void set_up_uc(UserContext *uc, void (*idle_func)(void), void *sp) {
-  uc->pc = (void *)idle_func;
+  uc->pc = idle_func;
   uc->sp = sp;
 }
 
@@ -68,7 +66,7 @@ void KernelStart(char *cmd_args[], unsigned int pmem_size, UserContext *uctxt) {
 
   pcb_t *curr_proc = get_running_proc();
 
-  char* init_name = cmd_args[0];
+  char *init_name = cmd_args[0];
 
   if (curr_proc == init_pcb) {
     if (LoadProgram(init_name, cmd_args, curr_proc) != SUCCESS)

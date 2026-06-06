@@ -81,9 +81,7 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
    */
   cp = ((char *)VMEM_1_LIMIT) - size;
 
-  cpp = (char **)(((int)cp -
-                   ((argcount + 3 + POST_ARGV_NULL_SPACE) * sizeof(void *))) &
-                  ~7);
+  cpp = (char **)(((int)cp - ((argcount + 3 + POST_ARGV_NULL_SPACE) * sizeof(void *))) & ~7);
 
   /*
    * Compute the new stack pointer, leaving INITIAL_STACK_FRAME_SIZE bytes
@@ -91,15 +89,13 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
    */
   cp2 = (void *)(cpp - INITIAL_STACK_FRAME_SIZE);
 
-  TracePrintf(1, "prog_size %d, text %d data %d bss %d pages\n",
-              li.t_npg + data_npg, li.t_npg, li.id_npg, li.ud_npg);
+  TracePrintf(1, "prog_size %d, text %d data %d bss %d pages\n", li.t_npg + data_npg, li.t_npg, li.id_npg, li.ud_npg);
 
   /*
    * Compute how many pages we need for the stack */
   stack_npg = (VMEM_1_LIMIT - DOWN_TO_PAGE(cp2)) >> PAGESHIFT;
 
-  TracePrintf(1, "LoadProgram: heap_size %d, stack_size %d\n",
-              li.t_npg + data_npg, stack_npg);
+  TracePrintf(1, "LoadProgram: heap_size %d, stack_size %d\n", li.t_npg + data_npg, stack_npg);
 
   /* leave at least one page between heap and stack */
   if (stack_npg + data_pg1 + data_npg >= MAX_PT_LEN) {
@@ -115,7 +111,6 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
 
   /* Set the new user stack pointer in the target process context. */
   proc->uc.sp = cp2;
-
 
   /*
    * Preserve the argument strings in region 0 before the region 1
@@ -147,21 +142,18 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
 
   /* Allocate region 1 pages for the text segment and make them writable while loading. */
   int global_text_pg1 = text_pg1 + REGION1_BASE_VPN;
-  if (!alloc_region(global_text_pg1, global_text_pg1 + li.t_npg,
-                    PROT_READ | PROT_WRITE)) {
+  if (!alloc_region(global_text_pg1, global_text_pg1 + li.t_npg, PROT_READ | PROT_WRITE)) {
     return KILL;
   }
 
   /* Allocate region 1 pages for initialized and uninitialized data. */
   int global_data_pg1 = data_pg1 + REGION1_BASE_VPN;
-  if (!alloc_region(global_data_pg1, global_data_pg1 + data_npg,
-                    PROT_READ | PROT_WRITE)) {
+  if (!alloc_region(global_data_pg1, global_data_pg1 + data_npg, PROT_READ | PROT_WRITE)) {
     return KILL;
   }
 
   /* Allocate the new user stack at the top of region 1. */
-  if (!alloc_region(REGION1_LIMIT_VPN - stack_npg, REGION1_LIMIT_VPN,
-                    PROT_READ | PROT_WRITE)) {
+  if (!alloc_region(REGION1_LIMIT_VPN - stack_npg, REGION1_LIMIT_VPN, PROT_READ | PROT_WRITE)) {
     free(argbuf);
     close(fd);
     return KILL;
@@ -198,8 +190,7 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
   close(fd); /* we've read it all now */
 
   /* Change text page protection to read/execute now that loading is complete. */
-  prot_region(global_text_pg1, global_text_pg1 + li.t_npg,
-              PROT_READ | PROT_EXEC);
+  prot_region(global_text_pg1, global_text_pg1 + li.t_npg, PROT_READ | PROT_EXEC);
 
   /*
    * Zero out the uninitialized data area
@@ -207,7 +198,7 @@ int LoadProgram(char *name, char *args[], pcb_t *proc) {
   bzero((void *)li.id_end, li.ud_end - li.id_end);
 
   /* Set the process entry point from the loaded executable header. */
-  proc->uc.pc = (void *)li.entry;
+  proc->uc.pc = (void (*)(void))li.entry;
 
   proc->mem_ctx.txt_start_page = global_text_pg1;
   proc->mem_ctx.data_start_page = global_data_pg1;
