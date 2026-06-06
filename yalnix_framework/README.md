@@ -1,11 +1,8 @@
 # Yalnix Framework Layout
 
-## 1. src, user, and headers:
-All of our code 
-
-## 2. include 
-Where all of the important definition for the framework live
-
+- `src/` Project sourcecode
+- `headers/` Project headers
+- `user/` User test programs
 
 # Work done in Checkpoint4
 We have implemented `Fork`, `Exec`, `Wait`, and `Exit`. We have also implemented the math and illegal traps which simply exit the process.
@@ -28,3 +25,38 @@ make
 ```
 
 Will run the init program with this testing.
+
+# Checkpoint 5 Testing
+
+The `user/echo.c` program validates TTY behavior:
+- Basic echo (read line, echo back)
+- Partial read (short read then drain remainder)
+- Large write > `TERMINAL_MAX_LINE` (spans lines)
+- Multi‑terminal output (TTY 0‑3)
+- Concurrent writers (parent + two children)
+- Interactive echo loop (continuous prompt)
+
+Build and run:
+
+```bash
+make
+./yalnix -x user/echo
+```
+
+# Pipe Testing
+
+The `user/pipe_test.c` program validates the pipe subsystem:
+- PipeInit creates a pipe and returns a valid pipe_id.
+- Child process blocks on `PipeRead` until the parent writes.
+- Parent writes “hello” → child reads exactly 5 bytes, verifies string.
+- Parent waits for child exit and checks status code.
+- Partial writes/reads test buffering (write 6, read 3, then drain remaining 3).
+- Final write/read of “xyz” confirms full‑cycle behavior.
+- Reclaim frees the pipe; successful run prints “pipe_test PASS”.
+
+Build and run:
+
+```bash
+make
+./yalnix user/pipe_test
+```
