@@ -143,8 +143,6 @@ int main(void)
     int pid;
     int r, cvar, mutex;
 
-    char buf[100];
-
     r = CvarInit(&cvar);
     assert(r != ERROR);
     r = LockInit(&mutex);

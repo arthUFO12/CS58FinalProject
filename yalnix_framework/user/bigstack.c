@@ -3,10 +3,8 @@
 int main(void )
 {
   char big_buffer[10*1024];
-  int foo;
   int i;
 
-  foo = 42;
   for (i = 0; i < 10 * 1024; i++) 
     big_buffer[i] = 'a';
 

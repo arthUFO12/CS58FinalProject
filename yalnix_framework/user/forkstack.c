@@ -13,6 +13,8 @@ recurse(who, i)
 
   for (j = 0; j < 1024; j++) 
     waste[j] = 'a';
+  if (mem != NULL)
+    mem[0] = waste[0];
 
   TtyPrintf(1, "%s %d\n", who, i);
   if (i == 0)
@@ -29,6 +31,9 @@ int main(argc, argv)
      int argc;
      char *argv[];
 {
+  (void)argc;
+  (void)argv;
+
   int pid;
 
   TracePrintf(0,"BEFORE\n");
